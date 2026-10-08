@@ -9,6 +9,7 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
+    "create-admin": "node scripts/create-admin.js",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio"
   },

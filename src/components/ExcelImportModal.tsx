@@ -90,7 +90,7 @@ export function ExcelImportModal({
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: "array" });
+        const workbook = XLSX.read(data, { type: "array", cellDates: true });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         const rawJson: any[] = XLSX.utils.sheet_to_json(worksheet);
@@ -137,7 +137,14 @@ export function ExcelImportModal({
                 : normalizedRow[keyNorm];
 
             if (val !== undefined && val !== null) {
-              item[col.key] = String(val).trim();
+              if (val instanceof Date && !isNaN(val.getTime())) {
+                const y = val.getFullYear();
+                const m = String(val.getMonth() + 1).padStart(2, "0");
+                const d = String(val.getDate()).padStart(2, "0");
+                item[col.key] = `${y}-${m}-${d}`;
+              } else {
+                item[col.key] = String(val).trim();
+              }
             } else {
               item[col.key] = "";
             }

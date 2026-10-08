@@ -2,6 +2,64 @@ import { NextResponse } from "next/server";
 import { requireRole, recordAuditLog } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
+function parseFlexibleDate(val: any): Date | null {
+  if (!val) return null;
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    return val;
+  }
+
+  // Xử lý số serial ngày từ Excel (ví dụ 46244 -> khoảng năm 2026)
+  const num = Number(val);
+  if (!isNaN(num) && num > 1000 && num < 100000) {
+    const excelEpochMs = (num - 25569) * 86400 * 1000;
+    const d = new Date(excelEpochMs);
+    if (!isNaN(d.getTime())) {
+      return d;
+    }
+  }
+
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (!trimmed) return null;
+
+    // Định dạng DD/MM/YYYY hoặc DD-MM-YYYY
+    const ddmmyyyy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (ddmmyyyy) {
+      const day = parseInt(ddmmyyyy[1], 10);
+      const month = parseInt(ddmmyyyy[2], 10) - 1;
+      const year = parseInt(ddmmyyyy[3], 10);
+      const d = new Date(Date.UTC(year, month, day));
+      if (!isNaN(d.getTime()) && year >= 1970 && year <= 2100) {
+        return d;
+      }
+    }
+
+    // Định dạng YYYY-MM-DD
+    const yyyymmdd = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (yyyymmdd) {
+      const year = parseInt(yyyymmdd[1], 10);
+      const month = parseInt(yyyymmdd[2], 10) - 1;
+      const day = parseInt(yyyymmdd[3], 10);
+      const d = new Date(Date.UTC(year, month, day));
+      if (!isNaN(d.getTime()) && year >= 1970 && year <= 2100) {
+        return d;
+      }
+    }
+
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      if (year >= 1970 && year <= 2100) {
+        return d;
+      }
+    }
+  }
+
+  return null;
+}
+
 // POST /api/staff/import - Batch import staff members from Excel (Admin only)
 export async function POST(request: Request) {
   try {
@@ -42,13 +100,7 @@ export async function POST(request: Request) {
       const department = item.department ? String(item.department).trim() : null;
       const status = item.status === "left" ? "left" : "working";
 
-      let joinDate: Date | null = null;
-      if (item.joinDate) {
-        const parsed = new Date(item.joinDate);
-        if (!isNaN(parsed.getTime())) {
-          joinDate = parsed;
-        }
-      }
+      const joinDate = parseFlexibleDate(item.joinDate);
 
       if (!fullName) {
         errors.push(`Dòng ${i + 1}: Thiếu Họ và tên.`);
