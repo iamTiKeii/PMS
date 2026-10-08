@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth, requireRole, recordAuditLog } from "@/lib/auth";
 import { encryptSitePassword, decryptSitePassword } from "@/lib/crypto";
+import { createSystemNotification } from "@/lib/notifications";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -225,6 +226,18 @@ export async function POST(request: Request) {
         staffName: newAccount.staff.fullName,
       },
     });
+
+    createSystemNotification({
+      title: "Tài khoản site mới",
+      content: `Tài khoản "${newAccount.accountLabel}" (${newAccount.siteLoginUsername}) vừa được thêm vào dự án "${newAccount.project.projectName}" cho nhân sự ${newAccount.staff.fullName}.`,
+      type: "account",
+      severity: "info",
+      objectType: "account",
+      objectId: newAccount.id,
+      targetUrl: "/projects",
+      createdById: session.userId,
+      actorName: session.username,
+    }).catch((e) => console.error("Notification dispatch error:", e));
 
     return NextResponse.json({
       success: true,

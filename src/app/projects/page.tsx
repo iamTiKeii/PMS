@@ -25,9 +25,12 @@ import {
   ShieldCheck,
   Layers,
   ArrowUpRight,
+  Lock,
+  User,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { ExcelImportModal, ColumnDefinition } from "@/components/ExcelImportModal";
+import { PasswordRevealModal } from "@/components/PasswordRevealModal";
 import { generateRandomPassword } from "@/lib/crypto";
 
 export default function ProjectsPage() {
@@ -38,6 +41,28 @@ export default function ProjectsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Project Detail & Vault Accounts state
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [projectAccounts, setProjectAccounts] = useState<any[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [accountSearch, setAccountSearch] = useState("");
+
+  // Step-Up Reveal Password Modal state
+  const [revealModalOpen, setRevealModalOpen] = useState(false);
+  const [selectedAccountForReveal, setSelectedAccountForReveal] = useState<any>(null);
+
+  // Add / Edit Site Account Modal state
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<any>(null);
+  const [accountStaffId, setAccountStaffId] = useState("");
+  const [accountLabel, setAccountLabel] = useState("");
+  const [siteLoginUsername, setSiteLoginUsername] = useState("");
+  const [sitePassword, setSitePassword] = useState("");
+  const [accountNotes, setAccountNotes] = useState("");
+  const [savingAccount, setSavingAccount] = useState(false);
+  const [copiedAccUsernameId, setCopiedAccUsernameId] = useState<string | null>(null);
 
   // Add / Edit Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -263,6 +288,122 @@ export default function ProjectsPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const openProjectDetail = (p: any) => {
+    setSelectedProject(p);
+    setDetailModalOpen(true);
+    setAccountSearch("");
+    fetchProjectAccounts(p.id);
+  };
+
+  const fetchProjectAccounts = async (projectId: string) => {
+    setLoadingAccounts(true);
+    try {
+      const res = await fetch(`/api/vault/accounts?projectId=${projectId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) setProjectAccounts(json.data);
+      }
+    } catch (err) {
+      console.error(err);
+      error("Lỗi tải danh sách tài khoản của dự án.");
+    } finally {
+      setLoadingAccounts(false);
+    }
+  };
+
+  const openAddAccountModal = () => {
+    setEditingAccount(null);
+    setAccountStaffId("");
+    setAccountLabel("");
+    setSiteLoginUsername("");
+    setSitePassword(selectedProject?.defaultPassword || "");
+    setAccountNotes("");
+    setAccountModalOpen(true);
+  };
+
+  const openEditAccountModal = (acc: any) => {
+    setEditingAccount(acc);
+    setAccountStaffId(acc.staffId || "");
+    setAccountLabel(acc.accountLabel);
+    setSiteLoginUsername(acc.siteLoginUsername);
+    setSitePassword("");
+    setAccountNotes(acc.notes || "");
+    setAccountModalOpen(true);
+  };
+
+  const handleSaveAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProject?.id || !accountLabel.trim() || !siteLoginUsername.trim()) {
+      error("Vui lòng điền tên gợi nhớ và tên đăng nhập site.");
+      return;
+    }
+
+    setSavingAccount(true);
+    try {
+      const isEdit = Boolean(editingAccount);
+      const url = isEdit ? `/api/vault/accounts/${editingAccount.id}` : "/api/vault/accounts";
+      const method = isEdit ? "PUT" : "POST";
+
+      const payload: any = {
+        projectId: selectedProject.id,
+        staffId: accountStaffId || null,
+        accountLabel: accountLabel.trim(),
+        siteLoginUsername: siteLoginUsername.trim(),
+        notes: accountNotes.trim() || null,
+      };
+      if (sitePassword) {
+        payload.sitePassword = sitePassword;
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        success(isEdit ? "Đã cập nhật tài khoản site!" : "Đã thêm tài khoản vào két của dự án!");
+        setAccountModalOpen(false);
+        fetchProjectAccounts(selectedProject.id);
+        fetchProjects();
+      } else {
+        error(json.error?.message || "Lỗi lưu tài khoản site.");
+      }
+    } catch {
+      error("Lỗi kết nối máy chủ.");
+    } finally {
+      setSavingAccount(false);
+    }
+  };
+
+  const handleDeleteAccount = async (acc: any) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${acc.accountLabel}" (${acc.siteLoginUsername}) không?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/vault/accounts/${acc.id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        success("Đã xóa tài khoản khỏi két dự án.");
+        fetchProjectAccounts(selectedProject.id);
+        fetchProjects();
+      } else {
+        error(json.error?.message || "Lỗi xóa tài khoản.");
+      }
+    } catch {
+      error("Lỗi khi gửi yêu cầu xóa tài khoản.");
+    }
+  };
+
+  const handleCopyAccUsername = (uname: string, id: string) => {
+    navigator.clipboard.writeText(uname);
+    setCopiedAccUsernameId(id);
+    success("Đã sao chép tên đăng nhập!");
+    setTimeout(() => setCopiedAccUsernameId(null), 2000);
+  };
+
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#060913] bg-cyber-grid">
       <Header
@@ -424,33 +565,19 @@ export default function ProjectsPage() {
                     </div>
                   </div>
 
-                  {/* Default Site Password Bar */}
-                  <div className="p-3 rounded-2xl bg-amber-950/25 border border-amber-500/25 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                        <KeyRound className="w-3.5 h-3.5" />
+                  {/* Default Site Password (Chỉ hiển thị khi có thiết lập) */}
+                  {p.defaultPassword && (
+                    <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <KeyRound className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span className="text-[11px] text-amber-400/90 font-medium shrink-0">Mật khẩu mặc định:</span>
+                        <span className="text-xs font-mono font-bold text-amber-200 truncate">{p.defaultPassword}</span>
                       </div>
-                      <div className="min-w-0">
-                        <div className="text-[10px] uppercase font-bold text-amber-400/90 tracking-wider">
-                          Mật khẩu mặc định Site
-                        </div>
-                        {p.defaultPassword ? (
-                          <div className="text-xs font-mono font-bold text-amber-200 truncate">
-                            {p.defaultPassword}
-                          </div>
-                        ) : (
-                          <div className="text-[11px] text-slate-500 italic">
-                            Chưa thiết lập (vui lòng sửa để cài đặt)
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {p.defaultPassword && (
                       <button
                         type="button"
                         onClick={() => handleCopy(p.defaultPassword, "pass_" + p.id)}
-                        className="p-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 hover:text-white transition-colors shrink-0"
-                        title="Sao chép mật khẩu mặc định của Site"
+                        className="p-1 rounded-lg hover:bg-amber-500/20 text-amber-300 hover:text-white transition-colors shrink-0"
+                        title="Sao chép mật khẩu mặc định"
                       >
                         {copiedId === "pass_" + p.id ? (
                           <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -458,70 +585,50 @@ export default function ProjectsPage() {
                           <Copy className="w-3.5 h-3.5" />
                         )}
                       </button>
-                    )}
-                  </div>
-
-                  {/* Responsibility Matrix: L1 / L2 / L3 */}
-                  <div className="space-y-2 pt-1">
-                    <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                      <Users2 className="w-3.5 h-3.5 text-blue-400" />
-                      <span>Ma trận Trách nhiệm (Tier Matrix):</span>
                     </div>
+                  )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                      {/* Level 1: Lead */}
-                      <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
-                        <div className="text-[9px] font-extrabold text-blue-400 uppercase">Level 1 (Kỹ thuật)</div>
-                        {p.level1 ? (
-                          <div className="mt-1 font-bold text-white text-xs truncate" title={p.level1.fullName}>
-                            {p.level1.fullName}
-                          </div>
-                        ) : (
-                          <div className="mt-1 text-slate-600 italic text-[11px]">Chưa gán</div>
-                        )}
-                      </div>
-
-                      {/* Level 2: PM */}
-                      <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
-                        <div className="text-[9px] font-extrabold text-amber-400 uppercase">Level 2 (PM)</div>
-                        {p.level2 ? (
-                          <div className="mt-1 font-bold text-white text-xs truncate" title={p.level2.fullName}>
-                            {p.level2.fullName}
-                          </div>
-                        ) : (
-                          <div className="mt-1 text-slate-600 italic text-[11px]">Không yêu cầu</div>
-                        )}
-                      </div>
-
-                      {/* Level 3: Director */}
-                      <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800">
-                        <div className="text-[9px] font-extrabold text-purple-400 uppercase">Level 3 (Director)</div>
-                        {p.level3 ? (
-                          <div className="mt-1 font-bold text-white text-xs truncate" title={p.level3.fullName}>
-                            {p.level3.fullName}
-                          </div>
-                        ) : (
-                          <div className="mt-1 text-slate-600 italic text-[11px]">Không yêu cầu</div>
-                        )}
-                      </div>
+                  {/* Nhân sự phụ trách (Gọn gàng, chỉ hiển thị ai đã được gán) */}
+                  {(p.level1 || p.level2 || p.level3) && (
+                    <div className="flex items-center gap-2 flex-wrap pt-0.5 text-xs">
+                      <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-0.5">
+                        <Users2 className="w-3.5 h-3.5 text-blue-400" />
+                        Phụ trách:
+                      </span>
+                      {p.level1 && (
+                        <span className="px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300 border border-blue-500/30 font-medium text-[11px]">
+                          <strong className="font-bold text-blue-400">Lead:</strong> {p.level1.fullName}
+                        </span>
+                      )}
+                      {p.level2 && (
+                        <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30 font-medium text-[11px]">
+                          <strong className="font-bold text-amber-400">PM:</strong> {p.level2.fullName}
+                        </span>
+                      )}
+                      {p.level3 && (
+                        <span className="px-2.5 py-1 rounded-lg bg-purple-500/15 text-purple-300 border border-purple-500/30 font-medium text-[11px]">
+                          <strong className="font-bold text-purple-400">Dir:</strong> {p.level3.fullName}
+                        </span>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* Card Footer: Credential Count & Details Link */}
+                {/* Card Footer: Credential Count & Open Detail & Vault Modal */}
                 <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs relative z-10">
                   <div className="flex items-center gap-1.5 text-slate-400">
                     <KeyRound className="w-3.5 h-3.5 text-amber-400" />
                     <span>Tài khoản trong két: <strong className="text-white">{p.accountCount || 0}</strong></span>
                   </div>
 
-                  <Link
-                    href={`/vault?project=${p.id}`}
-                    className="text-xs font-bold text-blue-400 hover:text-cyan-300 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
+                  <button
+                    type="button"
+                    onClick={() => openProjectDetail(p)}
+                    className="px-3 py-1.5 rounded-xl bg-blue-600/15 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
                   >
-                    <span>Xem Két mật khẩu</span>
+                    <span>Chi tiết & Két tài khoản</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
-                  </Link>
+                  </button>
                 </div>
               </div>
             ))
@@ -745,6 +852,407 @@ export default function ProjectsPage() {
         onImport={handleImportProjects}
         onSuccess={fetchProjects}
       />
+
+      {/* Project Detail & Vault Accounts Modal */}
+      <Modal
+        isOpen={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        title={selectedProject?.projectName || "Chi tiết Dự án"}
+        subtitle={`Mã: ${selectedProject?.projectCode || "N/A"} • Chi tiết cấu hình & Két tài khoản site`}
+        maxWidth="max-w-4xl"
+      >
+        <div className="space-y-6 text-xs max-h-[80vh] overflow-y-auto pr-1">
+          {/* Project Summary Card */}
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-mono font-extrabold px-2.5 py-1 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 uppercase">
+                  {selectedProject?.projectCode || "PROJECT"}
+                </span>
+                <span
+                  className={`text-[10px] font-extrabold px-2.5 py-1 rounded-xl flex items-center gap-1.5 ${
+                    selectedProject?.status === "active"
+                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                      : selectedProject?.status === "maintenance"
+                        ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                        : "bg-slate-800 text-slate-400 border border-slate-700"
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      selectedProject?.status === "active" ? "bg-emerald-400 animate-pulse" : "bg-slate-400"
+                    }`}
+                  />
+                  {selectedProject?.status === "active"
+                    ? "Đang vận hành"
+                    : selectedProject?.status === "maintenance"
+                      ? "Bảo trì"
+                      : "Đã đóng"}
+                </span>
+              </div>
+
+              {selectedProject?.defaultPassword && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                  <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-[11px] text-amber-400 font-medium">Mật khẩu mặc định:</span>
+                  <span className="text-xs font-mono font-bold text-amber-200">{selectedProject.defaultPassword}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(selectedProject.defaultPassword, "detail_pass")}
+                    className="p-1 rounded hover:bg-amber-500/20 text-amber-300"
+                    title="Sao chép mật khẩu"
+                  >
+                    {copiedId === "detail_pass" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Link HIS Bar */}
+            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[11px] font-bold text-slate-400 shrink-0">Link HIS:</span>
+                <span className="text-xs font-mono text-cyan-300 truncate">{selectedProject?.systemHisUrl}</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleCopy(selectedProject?.systemHisUrl || "", "detail_his")}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+                  title="Sao chép link"
+                >
+                  {copiedId === "detail_his" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+                <a
+                  href={selectedProject?.systemHisUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30"
+                  title="Mở link trong tab mới"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+
+            {/* Phụ trách L1/L2/L3 */}
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-1">
+                <Users2 className="w-3.5 h-3.5 text-blue-400" />
+                Phụ trách:
+              </span>
+              {selectedProject?.level1 && (
+                <span className="px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300 border border-blue-500/30 font-medium text-[11px]">
+                  <strong className="font-bold text-blue-400">Level 1 (Kỹ thuật):</strong> {selectedProject.level1.fullName}
+                </span>
+              )}
+              {selectedProject?.level2 && (
+                <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30 font-medium text-[11px]">
+                  <strong className="font-bold text-amber-400">Level 2 (PM):</strong> {selectedProject.level2.fullName}
+                </span>
+              )}
+              {selectedProject?.level3 && (
+                <span className="px-2.5 py-1 rounded-lg bg-purple-500/15 text-purple-300 border border-purple-500/30 font-medium text-[11px]">
+                  <strong className="font-bold text-purple-400">Level 3 (Director):</strong> {selectedProject.level3.fullName}
+                </span>
+              )}
+            </div>
+
+            {selectedProject?.description && (
+              <p className="text-xs text-slate-400 leading-relaxed pt-1 border-t border-slate-900">
+                {selectedProject.description}
+              </p>
+            )}
+          </div>
+
+          {/* Vault Section */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-amber-400" />
+                <h4 className="text-sm font-extrabold text-white">Két Tài khoản Đăng nhập Site</h4>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                  {projectAccounts.length}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="relative w-48 sm:w-56">
+                  <input
+                    type="text"
+                    value={accountSearch}
+                    onChange={(e) => setAccountSearch(e.target.value)}
+                    placeholder="Tìm tài khoản..."
+                    className="w-full px-3 py-1.5 pl-8 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2" />
+                </div>
+                <button
+                  type="button"
+                  onClick={openAddAccountModal}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/20 whitespace-nowrap"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Thêm tài khoản</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Accounts Table */}
+            {loadingAccounts ? (
+              <div className="py-12 text-center text-slate-500 text-xs">Đang tải danh sách tài khoản...</div>
+            ) : projectAccounts.length === 0 ? (
+              <div className="py-12 px-4 rounded-2xl bg-slate-950/60 border border-dashed border-slate-800 text-center space-y-3">
+                <KeyRound className="w-8 h-8 text-slate-600 mx-auto" />
+                <p className="text-slate-400 text-xs">Chưa có tài khoản nào trong két của dự án này.</p>
+                <button
+                  type="button"
+                  onClick={openAddAccountModal}
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 text-xs font-bold inline-flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Thêm tài khoản đầu tiên</span>
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-slate-800/80 bg-slate-950/60">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800/80 bg-slate-900/60 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+                      <th className="py-3 px-4">Tài khoản / Vai trò</th>
+                      <th className="py-3 px-4">Nhân sự phụ trách</th>
+                      <th className="py-3 px-4">Tên đăng nhập Site</th>
+                      <th className="py-3 px-4">Mật khẩu</th>
+                      <th className="py-3 px-4 text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 text-xs">
+                    {projectAccounts
+                      .filter((acc) => {
+                        if (!accountSearch.trim()) return true;
+                        const q = accountSearch.toLowerCase();
+                        return (
+                          acc.accountLabel?.toLowerCase().includes(q) ||
+                          acc.siteLoginUsername?.toLowerCase().includes(q) ||
+                          acc.staff?.fullName?.toLowerCase().includes(q) ||
+                          acc.notes?.toLowerCase().includes(q)
+                        );
+                      })
+                      .map((acc) => (
+                        <tr key={acc.id} className="hover:bg-slate-900/40 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-white flex items-center gap-2">
+                              <span>{acc.accountLabel}</span>
+                            </div>
+                            {acc.notes && (
+                              <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{acc.notes}</p>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-slate-300">
+                            {acc.staff ? (
+                              <div className="flex items-center gap-1.5">
+                                <User className="w-3 h-3 text-blue-400" />
+                                <span className="font-medium text-white">{acc.staff.fullName}</span>
+                                {acc.staff.staffCode && (
+                                  <span className="text-[10px] text-slate-500">({acc.staff.staffCode})</span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-slate-500 italic">Dùng chung</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-bold text-cyan-300">{acc.siteLoginUsername}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyAccUsername(acc.siteLoginUsername, acc.id)}
+                                className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                                title="Sao chép tên đăng nhập"
+                              >
+                                {copiedAccUsernameId === acc.id ? (
+                                  <Check className="w-3 h-3 text-emerald-400" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedAccountForReveal(acc);
+                                setRevealModalOpen(true);
+                              }}
+                              className="px-2.5 py-1 rounded-xl bg-purple-500/15 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 text-[11px] font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                            >
+                              <Lock className="w-3 h-3" />
+                              <span>Xem mật khẩu</span>
+                            </button>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => openEditAccountModal(acc)}
+                                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+                                title="Sửa tài khoản"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAccount(acc)}
+                                className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400"
+                                title="Xóa tài khoản"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add / Edit Site Account Modal */}
+      <Modal
+        isOpen={accountModalOpen}
+        onClose={() => setAccountModalOpen(false)}
+        title={editingAccount ? "Chỉnh sửa Tài khoản Site" : "Thêm Tài khoản vào Két Dự án"}
+        subtitle={`Dự án: ${selectedProject?.projectName}`}
+        maxWidth="max-w-xl"
+      >
+        <form onSubmit={handleSaveAccount} className="space-y-4 text-xs">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Tên gợi nhớ / Chức danh <span className="text-rose-400">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={accountLabel}
+              onChange={(e) => setAccountLabel(e.target.value)}
+              placeholder="VD: Admin HIS, Bác sĩ trưởng ca, Tài khoản Kỹ thuật..."
+              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Nhân sự được bàn giao / sử dụng
+            </label>
+            <select
+              value={accountStaffId}
+              onChange={(e) => setAccountStaffId(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            >
+              <option value="">-- Dùng chung / Không gán đích danh --</option>
+              {staffList.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.fullName} ({s.staffCode || "N/A"}) - {s.department || "Chưa rõ phòng ban"}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Tên đăng nhập Site <span className="text-rose-400">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={siteLoginUsername}
+              onChange={(e) => setSiteLoginUsername(e.target.value)}
+              placeholder="VD: admin_bv, bsy_nguyenvana..."
+              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white font-mono placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Mật khẩu Site {editingAccount ? "(Để trống nếu không đổi)" : ""}
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setSitePassword(generateRandomPassword(14));
+                  success("Đã sinh mật khẩu ngẫu nhiên!");
+                }}
+                className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-semibold"
+              >
+                <Sparkles className="w-3 h-3" />
+                Sinh mật khẩu
+              </button>
+            </div>
+            <input
+              type="text"
+              value={sitePassword}
+              onChange={(e) => setSitePassword(e.target.value)}
+              placeholder={
+                selectedProject?.defaultPassword
+                  ? `Để trống sẽ dùng mật khẩu mặc định: ${selectedProject.defaultPassword}`
+                  : "Nhập mật khẩu cho tài khoản..."
+              }
+              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white font-mono placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+            {!editingAccount && selectedProject?.defaultPassword && !sitePassword && (
+              <p className="text-[11px] text-amber-400">
+                Lưu ý: Mật khẩu đang để trống sẽ tự động kế thừa mật khẩu mặc định của dự án.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              Ghi chú thêm
+            </label>
+            <textarea
+              rows={2}
+              value={accountNotes}
+              onChange={(e) => setAccountNotes(e.target.value)}
+              placeholder="Ghi chú phân quyền, nhóm khoa phòng hoặc lưu ý khi dùng..."
+              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+            <button
+              type="button"
+              onClick={() => setAccountModalOpen(false)}
+              className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={savingAccount}
+              className="px-6 py-2.5 rounded-2xl text-xs font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white shadow-lg shadow-blue-500/25 disabled:opacity-50 transition-all"
+            >
+              {savingAccount ? "Đang lưu..." : editingAccount ? "Lưu thay đổi" : "Thêm vào Két"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Password Reveal Modal */}
+      <PasswordRevealModal
+        isOpen={revealModalOpen}
+        onClose={() => setRevealModalOpen(false)}
+        accountId={selectedAccountForReveal?.id || null}
+        accountLabel={selectedAccountForReveal?.accountLabel || ""}
+        projectName={selectedProject?.projectName || ""}
+        siteUsername={selectedAccountForReveal?.siteLoginUsername || ""}
+      />
     </div>
   );
 }
+

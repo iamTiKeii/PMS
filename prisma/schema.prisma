@@ -18,11 +18,13 @@ model User {
   lastLoginAt        DateTime?
   mustChangePassword Boolean      @default(false)
   staffId            String?      @unique
-  staff              Staff?       @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  staff              Staff?             @relation(fields: [staffId], references: [id], onDelete: SetNull)
   createdLinks       DocLink[]
   auditLogs          AuditLog[]
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  createdNotifications Notification[]
+  notificationReads  NotificationRead[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
   deletedAt          DateTime?
 
   @@map("system_users")
@@ -131,3 +133,74 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+model Notification {
+  id          String    @id @default(cuid()) @db.VarChar(36)
+  createdById String?   @map("created_by")
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  type        String    @db.VarChar(50) // project, staff, account, security, system, custom
+  title       String    @db.VarChar(255)
+  content     String    @db.Text
+  severity    String    @default("info") @db.VarChar(20) // info, success, warning, important, security
+  objectType  String?   @map("object_type") @db.VarChar(50)
+  objectId    String?   @map("object_id") @db.VarChar(50)
+  targetUrl   String?   @map("target_url") @db.VarChar(1000)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  expiresAt   DateTime? @map("expires_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  reads       NotificationRead[]
+  deliveries  NotificationDelivery[]
+
+  @@index([createdAt])
+  @@index([type])
+  @@index([objectType, objectId])
+  @@map("notifications")
+}
+
+model NotificationRead {
+  id             String       @id @default(cuid()) @db.VarChar(36)
+  notificationId String       @map("notification_id") @db.VarChar(36)
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         String       @map("user_id")
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now()) @map("read_at")
+
+  @@unique([notificationId, userId])
+  @@index([userId, readAt])
+  @@map("notification_reads")
+}
+
+model NotificationDelivery {
+  id                String       @id @default(cuid()) @db.VarChar(36)
+  notificationId    String       @map("notification_id") @db.VarChar(36)
+  notification      Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  channel           String       @db.VarChar(30) // web, telegram
+  status            String       @default("pending") @db.VarChar(30) // pending, sent, failed
+  externalMessageId String?      @map("external_message_id") @db.VarChar(100)
+  errorMessage      String?      @db.Text @map("error_message")
+  sentAt            DateTime?    @map("sent_at")
+
+  @@index([notificationId])
+  @@index([channel, status])
+  @@map("notification_deliveries")
+}
+
+model TelegramConfig {
+  id                String   @id @default(cuid()) @db.VarChar(36)
+  botName           String?  @map("bot_name") @db.VarChar(100)
+  botTokenEncrypted String   @db.Text @map("bot_token_encrypted")
+  chatId            String   @map("chat_id") @db.VarChar(100)
+  chatName          String?  @map("chat_name") @db.VarChar(200)
+  enabled           Boolean  @default(true)
+  notifyProject     Boolean  @default(true) @map("notify_project")
+  notifyStaff       Boolean  @default(true) @map("notify_staff")
+  notifyAccount     Boolean  @default(true) @map("notify_account")
+  notifySystem      Boolean  @default(true) @map("notify_system")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("telegram_config")
+}
+
+

@@ -53,6 +53,27 @@ export function decryptSitePassword(encryptedData: {
 }
 
 /**
+ * Encrypt a generic secret string (e.g. Telegram Bot Token) using AES-256-GCM
+ * Returns formatted string: iv:authTag:ciphertext
+ */
+export function encryptSecret(plaintext: string): string {
+  const enc = encryptSitePassword(plaintext);
+  return `${enc.iv}:${enc.authTag}:${enc.ciphertext}`;
+}
+
+/**
+ * Decrypt a generic secret string using AES-256-GCM
+ */
+export function decryptSecret(encryptedString: string): string {
+  const parts = encryptedString.split(":");
+  if (parts.length !== 3) {
+    throw new Error("Định dạng dữ liệu mã hóa không hợp lệ");
+  }
+  const [iv, authTag, ciphertext] = parts;
+  return decryptSitePassword({ iv, authTag, ciphertext });
+}
+
+/**
  * Hash login password using bcrypt
  */
 export async function hashPassword(password: string): Promise<string> {

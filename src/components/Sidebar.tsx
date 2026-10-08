@@ -17,6 +17,8 @@ import {
   Layers,
   Sparkles,
   ChevronRight,
+  Bell,
+  Send,
 } from "lucide-react";
 import { useToast } from "./Toast";
 
@@ -73,6 +75,12 @@ export function Sidebar({ user }: SidebarProps) {
           icon: LayoutDashboard,
           roles: ["admin", "pm", "user"],
         },
+        {
+          label: "Bảng tin Thông báo",
+          href: "/notifications",
+          icon: Bell,
+          roles: ["admin", "pm", "user"],
+        },
       ],
     },
     {
@@ -87,21 +95,12 @@ export function Sidebar({ user }: SidebarProps) {
           badgeColor: "bg-blue-500/15 text-blue-400 border-blue-500/30",
         },
         {
-          label: "Dự án & Ma trận Level",
+          label: "Quản lý Dự án",
           href: "/projects",
           icon: FolderKanban,
           roles: ["admin", "pm", "user"],
           badge: "HIS",
           badgeColor: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
-        },
-        {
-          label: "Két Mật khẩu Site",
-          href: "/vault",
-          icon: KeyRound,
-          roles: ["admin", "pm", "user"],
-          badge: "AES-256",
-          badgeColor: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-          highlight: true,
         },
         {
           label: "Danh mục Nhân sự",
@@ -114,6 +113,14 @@ export function Sidebar({ user }: SidebarProps) {
     {
       title: "Quản trị & An toàn",
       items: [
+        {
+          label: "Cấu hình Telegram",
+          href: "/telegram",
+          icon: Send,
+          roles: ["admin"],
+          badge: "Bot",
+          badgeColor: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+        },
         {
           label: "Quản trị Người dùng",
           href: "/users",

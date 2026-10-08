@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth, requireRole, recordAuditLog } from "@/lib/auth";
+import { createSystemNotification } from "@/lib/notifications";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -130,6 +131,18 @@ export async function POST(request: Request) {
       targetEntityId: newStaff.id,
       contextJson: { fullName: newStaff.fullName, staffCode: newStaff.staffCode },
     });
+
+    createSystemNotification({
+      title: "Nhân sự mới được tiếp nhận",
+      content: `Hồ sơ nhân sự "${newStaff.fullName}" (${newStaff.staffCode || "N/A"}) - ${newStaff.department || "Chưa rõ phòng ban"} đã được thêm vào hệ thống.`,
+      type: "staff",
+      severity: "success",
+      objectType: "staff",
+      objectId: newStaff.id,
+      targetUrl: "/staff",
+      createdById: adminSession.userId,
+      actorName: adminSession.username,
+    }).catch((e) => console.error("Notification dispatch error:", e));
 
     return NextResponse.json({
       success: true,

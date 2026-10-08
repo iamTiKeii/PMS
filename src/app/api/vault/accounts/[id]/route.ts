@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole, recordAuditLog } from "@/lib/auth";
 import { encryptSitePassword } from "@/lib/crypto";
+import { createSystemNotification } from "@/lib/notifications";
 import prisma from "@/lib/prisma";
 
 // PUT /api/vault/accounts/[id] - Update account (Admin or PM)
@@ -56,6 +57,18 @@ export async function PUT(
         newStatus: updated.status,
       },
     });
+
+    createSystemNotification({
+      title: newPassword ? "Đổi mật khẩu tài khoản site" : "Cập nhật tài khoản site",
+      content: `Tài khoản "${updated.accountLabel}" (${updated.siteLoginUsername}) vừa được cập nhật.`,
+      type: "account",
+      severity: "info",
+      objectType: "account",
+      objectId: updated.id,
+      targetUrl: "/projects",
+      createdById: session.userId,
+      actorName: session.username,
+    }).catch((e) => console.error("Notification dispatch error:", e));
 
     return NextResponse.json({
       success: true,
@@ -117,6 +130,18 @@ export async function DELETE(
       targetEntityId: existing.id,
       contextJson: { accountLabel: existing.accountLabel, project: existing.project.projectName },
     });
+
+    createSystemNotification({
+      title: "Xóa tài khoản site",
+      content: `Tài khoản "${existing.accountLabel}" (${existing.siteLoginUsername}) của dự án "${existing.project.projectName}" đã được xóa khỏi két.`,
+      type: "account",
+      severity: "warning",
+      objectType: "account",
+      objectId: existing.id,
+      targetUrl: "/projects",
+      createdById: session.userId,
+      actorName: session.username,
+    }).catch((e) => console.error("Notification dispatch error:", e));
 
     return NextResponse.json({
       success: true,

@@ -78,11 +78,11 @@ export default function DashboardPage() {
               <span>Thêm Link Docs</span>
             </Link>
             <Link
-              href="/vault"
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 hover:from-amber-500 hover:to-orange-400 text-slate-950 text-xs font-extrabold shadow-lg shadow-amber-500/25 flex items-center gap-1.5 transition-all"
+              href="/projects"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-1.5 transition-all"
             >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Mở Két Mật khẩu</span>
+              <FolderKanban className="w-3.5 h-3.5" />
+              <span>Quản lý Dự án</span>
             </Link>
           </div>
         }
@@ -183,15 +183,15 @@ export default function DashboardPage() {
             </div>
           </Link>
 
-          {/* Card 3: Credential Vault */}
+          {/* Card 3: Project Site Accounts */}
           <Link
-            href="/vault"
+            href="/projects"
             className="group p-5 rounded-2xl bg-gradient-to-br from-slate-900/90 via-slate-900/60 to-slate-950 border border-slate-800/80 shadow-xl hover:border-amber-500/50 hover:shadow-2xl hover:shadow-amber-500/10 transition-all duration-300 relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/15 transition-all" />
             <div className="flex items-center justify-between mb-3 relative z-10">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Két Mật khẩu Site
+                Tài khoản Site Dự án
               </span>
               <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <KeyRound className="w-5 h-5" />
@@ -210,7 +210,7 @@ export default function DashboardPage() {
                 Bảo mật an toàn
               </span>
               <span className="text-amber-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 font-bold">
-                Két khóa <ArrowUpRight className="w-3.5 h-3.5" />
+                Xem dự án <ArrowUpRight className="w-3.5 h-3.5" />
               </span>
             </div>
           </Link>

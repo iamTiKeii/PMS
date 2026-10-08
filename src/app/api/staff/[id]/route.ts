@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole, recordAuditLog } from "@/lib/auth";
+import { createSystemNotification } from "@/lib/notifications";
 import prisma from "@/lib/prisma";
 
 // PUT /api/staff/[id] - Update staff profile (Admin only)
@@ -94,6 +95,21 @@ export async function PUT(
       contextJson: { changes: body, warning: warningMessage || null },
     });
 
+    const isLeft = updated.status === "left" && existingStaff.status !== "left";
+    createSystemNotification({
+      title: isLeft ? "Nhân sự nghỉ việc" : "Cập nhật hồ sơ nhân sự",
+      content: isLeft
+        ? `Nhân sự "${updated.fullName}" (${updated.staffCode || "N/A"}) đã chuyển sang trạng thái Nghỉ việc.`
+        : `Hồ sơ nhân sự "${updated.fullName}" vừa được cập nhật thông tin.`,
+      type: "staff",
+      severity: isLeft ? "warning" : "info",
+      objectType: "staff",
+      objectId: updated.id,
+      targetUrl: "/staff",
+      createdById: adminSession.userId,
+      actorName: adminSession.username,
+    }).catch((e) => console.error("Notification dispatch error:", e));
+
     return NextResponse.json({
       success: true,
       data: updated,
@@ -178,6 +194,18 @@ export async function DELETE(
       targetEntityId: staff.id,
       contextJson: { fullName: staff.fullName },
     });
+
+    createSystemNotification({
+      title: "Hồ sơ nhân sự đã bị xóa",
+      content: `Hồ sơ nhân sự "${staff.fullName}" (${staff.staffCode || "N/A"}) đã được xóa mềm khỏi hệ thống.`,
+      type: "staff",
+      severity: "warning",
+      objectType: "staff",
+      objectId: staff.id,
+      targetUrl: "/staff",
+      createdById: adminSession.userId,
+      actorName: adminSession.username,
+    }).catch((e) => console.error("Notification dispatch error:", e));
 
     return NextResponse.json({
       success: true,

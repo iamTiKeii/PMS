@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth, requireRole, recordAuditLog } from "@/lib/auth";
 import { isValidUrl } from "@/lib/url-parser";
+import { createSystemNotification } from "@/lib/notifications";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -227,6 +228,18 @@ export async function POST(request: Request) {
       targetEntityId: newProject.id,
       contextJson: { projectName: newProject.projectName, projectCode: newProject.projectCode },
     });
+
+    createSystemNotification({
+      title: "Dự án mới được khởi tạo",
+      content: `Dự án "${newProject.projectName}" (${newProject.projectCode || "N/A"}) vừa được thêm vào hệ thống. Link HIS: ${newProject.systemHisUrl}`,
+      type: "project",
+      severity: "success",
+      objectType: "project",
+      objectId: newProject.id,
+      targetUrl: "/projects",
+      createdById: session.userId,
+      actorName: session.username,
+    }).catch((e) => console.error("Notification dispatch error:", e));
 
     return NextResponse.json({
       success: true,

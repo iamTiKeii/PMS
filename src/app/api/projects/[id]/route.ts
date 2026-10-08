@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth, requireRole, recordAuditLog } from "@/lib/auth";
 import { isValidUrl } from "@/lib/url-parser";
+import { createSystemNotification } from "@/lib/notifications";
 import prisma from "@/lib/prisma";
 
 // GET /api/projects/[id] - Get project details
@@ -217,6 +218,18 @@ export async function PUT(
       contextJson: { projectName: updated.projectName, changes: body },
     });
 
+    createSystemNotification({
+      title: "Cập nhật dự án",
+      content: `Dự án "${updated.projectName}" vừa được cập nhật thông tin và ma trận nhân sự phụ trách.`,
+      type: "project",
+      severity: "info",
+      objectType: "project",
+      objectId: updated.id,
+      targetUrl: "/projects",
+      createdById: session.userId,
+      actorName: session.username,
+    }).catch((e) => console.error("Notification dispatch error:", e));
+
     return NextResponse.json({
       success: true,
       data: updated,
@@ -279,6 +292,18 @@ export async function DELETE(
       targetEntityId: project.id,
       contextJson: { projectName: project.projectName },
     });
+
+    createSystemNotification({
+      title: "Dự án đã bị xóa",
+      content: `Dự án "${project.projectName}" đã được chuyển sang trạng thái đã đóng/xóa mềm.`,
+      type: "project",
+      severity: "warning",
+      objectType: "project",
+      objectId: project.id,
+      targetUrl: "/projects",
+      createdById: session.userId,
+      actorName: session.username,
+    }).catch((e) => console.error("Notification dispatch error:", e));
 
     return NextResponse.json({
       success: true,
