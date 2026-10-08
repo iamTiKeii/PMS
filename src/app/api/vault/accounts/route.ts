@@ -3,6 +3,8 @@ import { requireAuth, requireRole, recordAuditLog } from "@/lib/auth";
 import { encryptSitePassword, decryptSitePassword } from "@/lib/crypto";
 import prisma from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/vault/accounts - List site accounts (Masked passwords)
 export async function GET(request: Request) {
   try {

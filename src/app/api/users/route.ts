@@ -3,6 +3,8 @@ import { requireRole, recordAuditLog } from "@/lib/auth";
 import { hashPassword } from "@/lib/crypto";
 import prisma from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/users - List users (Admin only)
 export async function GET(request: Request) {
   try {

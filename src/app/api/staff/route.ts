@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAuth, requireRole, recordAuditLog } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/staff - List staff members
 export async function GET(request: Request) {
   try {

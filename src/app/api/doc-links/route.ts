@@ -3,6 +3,8 @@ import { requireAuth, recordAuditLog } from "@/lib/auth";
 import { parseUrlInfo, isValidUrl } from "@/lib/url-parser";
 import prisma from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/doc-links - List doc links
 export async function GET(request: Request) {
   try {
