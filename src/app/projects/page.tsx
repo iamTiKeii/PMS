@@ -312,11 +312,10 @@ export default function ProjectsPage() {
               <button
                 key={st.id}
                 onClick={() => setStatusFilter(st.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  statusFilter === st.id
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${statusFilter === st.id
                     ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30"
                     : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                }`}
+                  }`}
               >
                 {st.label}
               </button>
@@ -350,22 +349,20 @@ export default function ProjectsPage() {
                         {p.projectCode || "PROJECT"}
                       </span>
                       <span
-                        className={`text-[10px] font-extrabold px-2.5 py-1 rounded-xl flex items-center gap-1.5 ${
-                          p.status === "active"
+                        className={`text-[10px] font-extrabold px-2.5 py-1 rounded-xl flex items-center gap-1.5 ${p.status === "active"
                             ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
                             : p.status === "maintenance"
-                            ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
-                            : "bg-slate-800 text-slate-400 border border-slate-700"
-                        }`}
+                              ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                              : "bg-slate-800 text-slate-400 border border-slate-700"
+                          }`}
                       >
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            p.status === "active"
+                          className={`w-1.5 h-1.5 rounded-full ${p.status === "active"
                               ? "bg-emerald-400 animate-pulse"
                               : p.status === "maintenance"
-                              ? "bg-amber-400"
-                              : "bg-slate-400"
-                          }`}
+                                ? "bg-amber-400"
+                                : "bg-slate-400"
+                            }`}
                         />
                         {p.status === "active" ? "Đang vận hành" : p.status === "maintenance" ? "Bảo trì" : "Đã đóng"}
                       </span>

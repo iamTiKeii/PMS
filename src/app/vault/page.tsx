@@ -331,8 +331,8 @@ export default function VaultPage() {
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#060913] bg-cyber-grid">
       <Header
-        title="Két Thông tin Xác thực Dự án (Credential Vault)"
-        subtitle="Quản lý tài khoản đăng nhập site dự án, mã hóa đối xứng AES-256-GCM & Re-Authentication"
+        title="Két Mật khẩu Dự án"
+        subtitle="Quản lý tài khoản đăng nhập các site dự án"
         actionButton={
           <div className="flex items-center gap-2.5">
             <button
@@ -354,25 +354,6 @@ export default function VaultPage() {
       />
 
       <div className="p-6 md:p-8 space-y-6 max-w-7xl w-full mx-auto">
-        {/* Security Policy Banner */}
-        <div className="p-5 rounded-3xl bg-gradient-to-r from-blue-950/60 via-indigo-950/40 to-slate-900 border border-blue-500/30 shadow-xl backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0 shadow-md">
-              <ShieldCheck className="w-5 h-5 text-cyan-400" />
-            </div>
-            <div>
-              <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-                <span>Chính sách An toàn Thông tin & Quyền truy cập Két</span>
-                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  AES-256-GCM
-                </span>
-              </h3>
-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                Mật khẩu lưu trong két luôn được mã hóa 2 lớp. Để hiển thị mật khẩu rõ, thành viên dự án bắt buộc phải xác thực lại mật khẩu Tool (Step-Up Re-Auth) và hệ thống sẽ <strong>tự động che giấu sau 15 giây</strong>.
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* Filter & Search Bar */}
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4 p-4 rounded-3xl bg-slate-900/80 border border-slate-800/80 shadow-xl backdrop-blur-xl">
@@ -605,7 +586,7 @@ export default function VaultPage() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editingAccount ? "Chỉnh sửa Tài khoản Site" : "Thêm mới Tài khoản vào Két"}
-        subtitle="Mật khẩu sẽ được tự động mã hóa đối xứng AES-256-GCM trước khi lưu"
+        subtitle="Lưu trữ tài khoản đăng nhập an toàn cho dự án"
         maxWidth="max-w-xl"
       >
         <form onSubmit={handleSave} className="space-y-4 text-xs">
@@ -840,7 +821,7 @@ export default function VaultPage() {
         isOpen={importModalOpen}
         onClose={() => setImportModalOpen(false)}
         title="Nhập Danh sách Tài khoản Site từ Excel"
-        subtitle="Hỗ trợ nhập hàng loạt tài khoản đăng nhập site và tự động mã hóa đối xứng AES-256-GCM"
+        subtitle="Hỗ trợ nhập hàng loạt tài khoản đăng nhập site dự án"
         columns={vaultExcelColumns}
         sampleData={sampleVaultData}
         templateFileName="mau_import_tai_khoan_site.xlsx"

@@ -9,12 +9,8 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Layers,
-  KeyRound,
-  CheckCircle2,
   ShieldCheck,
-  Fingerprint,
-  Sparkles,
+  Layers,
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 
@@ -61,11 +57,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillDemoAccount = (u: string, p: string) => {
-    setUsername(u);
-    setPassword(p);
   };
 
   return (
@@ -158,62 +149,16 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Credentials */}
-          <div className="mt-7 pt-6 border-t border-slate-800/80">
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Fingerprint className="w-3.5 h-3.5 text-blue-400" />
-              <span>Tài khoản Demo thử nghiệm nhanh:</span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => fillDemoAccount("admin", "Admin@123")}
-                className="p-2.5 rounded-xl bg-slate-950/70 hover:bg-slate-800/90 border border-slate-800 hover:border-rose-500/50 text-left transition-all group"
-              >
-                <div className="text-[10px] font-extrabold text-rose-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-                  Admin
-                </div>
-                <div className="text-xs font-mono text-white mt-0.5 group-hover:text-blue-300">admin</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillDemoAccount("pm_minh", "User@123")}
-                className="p-2.5 rounded-xl bg-slate-950/70 hover:bg-slate-800/90 border border-slate-800 hover:border-amber-500/50 text-left transition-all group"
-              >
-                <div className="text-[10px] font-extrabold text-amber-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                  PM Lead
-                </div>
-                <div className="text-xs font-mono text-white mt-0.5 group-hover:text-amber-300">pm_minh</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillDemoAccount("dev_giang", "User@123")}
-                className="p-2.5 rounded-xl bg-slate-950/70 hover:bg-slate-800/90 border border-slate-800 hover:border-cyan-500/50 text-left transition-all group"
-              >
-                <div className="text-[10px] font-extrabold text-cyan-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                  Dev User
-                </div>
-                <div className="text-xs font-mono text-white mt-0.5 group-hover:text-cyan-300">dev_giang</div>
-              </button>
-            </div>
-          </div>
-
           {/* Security Features Trust Badges */}
           <div className="mt-6 pt-5 border-t border-slate-800/60 flex items-center justify-between text-[10px] text-slate-400">
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Mã hóa AES-256-GCM</span>
+              <span>Bảo mật dữ liệu an toàn</span>
             </div>
             <span>•</span>
             <div>Bảo vệ Chống Brute-force</div>
             <span>•</span>
-            <div>Audit Trail Bất biến</div>
+            <div>Nhật ký Kiểm toán</div>
           </div>
         </div>
       </div>

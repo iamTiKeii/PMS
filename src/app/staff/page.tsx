@@ -43,8 +43,19 @@ export default function StaffPage() {
   const [joinDate, setJoinDate] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Excel Import Modal state
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setCurrentUser(json.data);
+      })
+      .catch(console.error);
+  }, []);
+
+  const isAdmin = currentUser?.role === "admin";
 
   const staffExcelColumns: ColumnDefinition[] = [
     { key: "fullName", label: "Họ và Tên", required: true, example: "Nguyễn Văn An" },
@@ -207,25 +218,27 @@ export default function StaffPage() {
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#060913] bg-cyber-grid">
       <Header
-        title="Danh bạ Nhân sự Tập trung"
-        subtitle="Quản lý hồ sơ nhân viên, mã nhân sự, phân bổ dự án và tài khoản site được cấp phát"
+        title="Danh bạ Nhân sự"
+        subtitle="Quản lý thông tin nhân viên, phòng ban và phân công dự án"
         actionButton={
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => setImportModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all border border-slate-800 shadow-md"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              <span>Import Excel</span>
-            </button>
-            <button
-              onClick={openAddModal}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-1.5 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Thêm Nhân sự mới</span>
-            </button>
-          </div>
+          isAdmin ? (
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => setImportModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all border border-slate-800 shadow-md"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <span>Import Excel</span>
+              </button>
+              <button
+                onClick={openAddModal}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-1.5 transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Thêm Nhân sự mới</span>
+              </button>
+            </div>
+          ) : null
         }
       />
 
@@ -277,19 +290,19 @@ export default function StaffPage() {
                   <th className="py-4 px-4">Dự án phụ trách</th>
                   <th className="py-4 px-4">Tài khoản Site</th>
                   <th className="py-4 px-4">Trạng thái</th>
-                  <th className="py-4 px-5 text-right">Thao tác</th>
+                  {isAdmin && <th className="py-4 px-5 text-right">Thao tác</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-slate-300">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="py-16 text-center text-slate-500 text-xs">
+                    <td colSpan={isAdmin ? 8 : 7} className="py-16 text-center text-slate-500 text-xs">
                       Đang tải danh sách nhân sự...
                     </td>
                   </tr>
                 ) : staffList.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-16 text-center text-slate-500 text-xs">
+                    <td colSpan={isAdmin ? 8 : 7} className="py-16 text-center text-slate-500 text-xs">
                       Không tìm thấy nhân sự nào phù hợp với bộ lọc.
                     </td>
                   </tr>
@@ -390,24 +403,26 @@ export default function StaffPage() {
                         </span>
                       </td>
 
-                      <td className="py-4 px-5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => openEditModal(s)}
-                            className="p-2 rounded-xl bg-slate-950/70 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 transition-all"
-                            title="Sửa thông tin nhân sự"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(s)}
-                            className="p-2 rounded-xl bg-slate-950/70 hover:bg-rose-600/80 text-slate-400 hover:text-white border border-slate-800 hover:border-rose-500 transition-all"
-                            title="Xóa hồ sơ nhân sự"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
+                      {isAdmin && (
+                        <td className="py-4 px-5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => openEditModal(s)}
+                              className="p-2 rounded-xl bg-slate-950/70 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 transition-all"
+                              title="Sửa thông tin nhân sự"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(s)}
+                              className="p-2 rounded-xl bg-slate-950/70 hover:bg-rose-600/80 text-slate-400 hover:text-white border border-slate-800 hover:border-rose-500 transition-all"
+                              title="Xóa hồ sơ nhân sự"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

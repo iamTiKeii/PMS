@@ -104,24 +104,16 @@ export default function DashboardPage() {
                 {getGreeting()}, <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-indigo-300 bg-clip-text text-transparent">Quản trị viên</span>
               </h2>
               <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Tất cả liên kết tài liệu Google Docs/Sheets, thông tin xác thực site dự án và danh bạ nhân sự đều được đồng bộ hóa và bảo mật với cơ chế mã hóa đối xứng <strong>AES-256-GCM</strong>.
+                Hệ thống quản trị tài sản số, liên kết dự án, tài khoản đăng nhập và nhân sự phụ trách.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 shrink-0">
               <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 text-left">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trạng thái Két</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trạng thái Hệ thống</div>
                 <div className="text-sm font-extrabold text-emerald-400 flex items-center gap-1.5 mt-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Mã hóa 100% AES-256
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 text-left">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Chính sách Bảo mật</div>
-                <div className="text-sm font-extrabold text-cyan-400 flex items-center gap-1.5 mt-1">
-                  <ShieldCheck className="w-4 h-4 text-cyan-400" />
-                  Re-Auth 15s Timeout
+                  Hoạt động ổn định
                 </div>
               </div>
             </div>
@@ -215,7 +207,7 @@ export default function DashboardPage() {
             <div className="text-xs text-slate-400 mt-2 flex items-center justify-between relative z-10">
               <span className="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
                 <Lock className="w-3 h-3" />
-                Mã hóa AES-256-GCM
+                Bảo mật an toàn
               </span>
               <span className="text-amber-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 font-bold">
                 Két khóa <ArrowUpRight className="w-3.5 h-3.5" />
@@ -264,7 +256,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-white tracking-tight">Dự án Đang Vận hành Trọng điểm</h3>
-                  <p className="text-[11px] text-slate-400">Link HIS & nhân sự phụ trách trực tiếp</p>
+                  <p className="text-[11px] text-slate-400">Danh sách dự án đang vận hành</p>
                 </div>
               </div>
               <Link href="/projects" className="text-xs text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1">
@@ -346,7 +338,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-white tracking-tight">Tài liệu Số Mới Cập nhật</h3>
-                  <p className="text-[11px] text-slate-400">Google Docs, Sheets, Drive & File ID</p>
+                  <p className="text-[11px] text-slate-400">Tài liệu, biểu mẫu và liên kết quan trọng</p>
                 </div>
               </div>
               <Link href="/doc-links" className="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">

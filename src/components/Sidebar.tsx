@@ -244,7 +244,7 @@ export function Sidebar({ user }: SidebarProps) {
       <div className="mx-4 mb-3 p-3 rounded-2xl bg-gradient-to-br from-slate-900/90 to-slate-950/90 border border-slate-800/80 shadow-inner">
         <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-300">
           <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="truncate">Két mã hóa AES-256-GCM</span>
+          <span className="truncate">Hệ thống Két an toàn</span>
         </div>
         <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
           <span className="flex items-center gap-1.5">

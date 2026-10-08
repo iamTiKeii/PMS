@@ -210,8 +210,8 @@ export function PasswordRevealModal({
           {/* Plaintext Password Reveal Box */}
           <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/40 shadow-xl space-y-2.5">
             <div className="text-[11px] text-slate-400 font-semibold flex items-center justify-between">
-              <span>Mật khẩu giải mã (Plaintext Password):</span>
-              <span className="text-[10px] text-emerald-400 font-mono font-bold">AES-256-GCM OK</span>
+              <span>Mật khẩu:</span>
+              <span className="text-[10px] text-emerald-400 font-bold">Đã mở khóa</span>
             </div>
             <div className="flex items-center justify-between gap-3 p-2 rounded-xl bg-slate-900/90 border border-slate-800">
               <div className="font-mono text-base sm:text-lg font-extrabold text-emerald-400 tracking-wider select-all break-all px-1">
