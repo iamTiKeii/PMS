@@ -44,7 +44,10 @@ export default function LoginPage() {
 
       const json = await res.json();
       if (!res.ok || !json.success) {
-        error(json.error?.message || "Đăng nhập thất bại.");
+        const errorMsg = json.error?.details
+          ? `${json.error.message}: ${json.error.details}`
+          : json.error?.message || "Đăng nhập thất bại.";
+        error(errorMsg);
         setLoading(false);
         return;
       }

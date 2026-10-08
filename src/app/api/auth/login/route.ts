@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { comparePassword, signSessionToken } from "@/lib/crypto";
 import { recordAuditLog, SESSION_COOKIE_NAME } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -159,10 +161,17 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Login API Error:", error);
     return NextResponse.json(
-      { success: false, error: { code: "MSG-500", message: "Đã xảy ra lỗi máy chủ trong quá trình đăng nhập." } },
+      {
+        success: false,
+        error: {
+          code: "MSG-500",
+          message: "Đã xảy ra lỗi máy chủ trong quá trình đăng nhập.",
+          details: error?.message || String(error),
+        },
+      },
       { status: 500 }
     );
   }
