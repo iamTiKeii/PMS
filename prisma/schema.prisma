@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String       @id @default(cuid())
+  username           String       @unique
+  passwordHash       String
+  role               String       @default("user") // admin, pm, user
+  status             String       @default("active") // active, locked, inactive
+  failedAttempts     Int          @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  mustChangePassword Boolean      @default(false)
+  staffId            String?      @unique
+  staff              Staff?       @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  createdLinks       DocLink[]
+  auditLogs          AuditLog[]
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  deletedAt          DateTime?
+
+  @@map("system_users")
+}
+
+model Staff {
+  id                 String              @id @default(cuid())
+  fullName           String
+  staffCode          String?             @unique
+  corporateEmail     String?             @unique
+  phoneNumber        String?
+  department         String?
+  status             String              @default("working") // working, left
+  joinDate           DateTime?
+  user               User?
+  projectAssignments ProjectAssignment[]
+  siteAccounts       StaffAccount[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+
+  @@map("staff")
+}
+
+model DocLink {
+  id              String    @id @default(cuid())
+  title           String
+  targetUrl       String
+  linkCategory    String    @default("other") // docs, sheets, drive, other
+  tags            String    @default("[]") // JSON string of tags
+  description     String?
+  createdByUserId String
+  createdByUser   User      @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@map("doc_links")
+}
+
+model Project {
+  id              String              @id @default(cuid())
+  projectCode     String?             @unique
+  projectName     String              @unique
+  systemHisUrl    String
+  defaultPassword String?
+  status          String              @default("active") // active, maintenance, closed
+  description     String?
+  assignments     ProjectAssignment[]
+  siteAccounts    StaffAccount[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  deletedAt       DateTime?
+
+  @@map("projects")
+}
+
+model ProjectAssignment {
+  id           String    @id @default(cuid())
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  staffId      String
+  staff        Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  tierLevel    Int // 1: Lead (Bắt buộc), 2: PM (Tùy chọn), 3: Director (Tùy chọn)
+  isPrimary    Boolean   @default(true)
+  assignedAt   DateTime  @default(now())
+  unassignedAt DateTime?
+
+  @@unique([projectId, tierLevel, staffId])
+  @@map("project_assignments")
+}
+
+model StaffAccount {
+  id                    String    @id @default(cuid())
+  projectId             String
+  project               Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  staffId               String
+  staff                 Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  accountLabel          String
+  siteLoginUsername     String
+  sitePasswordEncrypted String
+  encryptionIv          String // 12-byte IV in base64
+  encryptionAuthTag     String // 16-byte Auth Tag in base64
+  status                String    @default("in_use") // in_use, stopped, rotation_needed
+  notes                 String?
+  lastRotatedAt         DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+
+  @@unique([projectId, staffId, siteLoginUsername])
+  @@map("staff_accounts")
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  actionCode     String
+  targetEntity   String
+  targetEntityId String?
+  contextJson    String?
+  ipAddress      String
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  @@map("audit_logs")
+}
