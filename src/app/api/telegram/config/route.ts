@@ -32,6 +32,7 @@ export async function GET() {
       data: {
         id: config.id,
         botName: config.botName,
+        botUsername: config.botUsername,
         tokenPreview,
         chatId: config.chatId,
         chatName: config.chatName,
@@ -40,6 +41,8 @@ export async function GET() {
         notifyStaff: config.notifyStaff,
         notifyAccount: config.notifyAccount,
         notifySystem: config.notifySystem,
+        lastTestAt: config.lastTestAt,
+        lastTestStatus: config.lastTestStatus,
         createdAt: config.createdAt,
         updatedAt: config.updatedAt,
       },
@@ -66,6 +69,7 @@ export async function POST(req: Request) {
 
     const {
       botName,
+      botUsername,
       botToken,
       chatId,
       chatName,
@@ -106,6 +110,7 @@ export async function POST(req: Request) {
         where: { id: existing.id },
         data: {
           botName: botName ? String(botName).trim() : null,
+          botUsername: botUsername ? String(botUsername).trim() : null,
           botTokenEncrypted,
           chatId: String(chatId).trim(),
           chatName: chatName ? String(chatName).trim() : null,
@@ -120,6 +125,7 @@ export async function POST(req: Request) {
       savedConfig = await prisma.telegramConfig.create({
         data: {
           botName: botName ? String(botName).trim() : null,
+          botUsername: botUsername ? String(botUsername).trim() : null,
           botTokenEncrypted,
           chatId: String(chatId).trim(),
           chatName: chatName ? String(chatName).trim() : null,

@@ -73,6 +73,8 @@ export async function GET(request: Request) {
         id: p.id,
         projectCode: p.projectCode,
         projectName: p.projectName,
+        shortName: p.shortName,
+        requestSequence: p.requestSequence,
         systemHisUrl: p.systemHisUrl,
         defaultPassword: p.defaultPassword,
         status: p.status,
@@ -115,6 +117,7 @@ export async function POST(request: Request) {
     const {
       projectName,
       projectCode,
+      shortName,
       systemHisUrl,
       defaultPassword,
       description,
@@ -128,6 +131,43 @@ export async function POST(request: Request) {
         { success: false, error: { code: "MSG-01", message: "Vui lòng nhập tên dự án và link hệ thống (HIS)." } },
         { status: 400 }
       );
+    }
+
+    // BR-20, BR-21: Validation Tên viết tắt (short_name)
+    let formattedShortName: string | null = null;
+    if (shortName && shortName.trim()) {
+      const trimmedShortName = shortName.trim().toUpperCase();
+      // Regex 2-20 ký tự chữ và số (A-Z, 0-9)
+      if (!/^[A-Z0-9]{2,20}$/.test(trimmedShortName)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "MSG-67",
+              message: "Tên viết tắt dự án không hợp lệ. Chỉ chấp nhận 2–20 ký tự chữ và số (A-Z, 0-9).",
+            },
+          },
+          { status: 400 }
+        );
+      }
+
+      // Check unique short_name
+      const existingShortName = await prisma.project.findFirst({
+        where: { shortName: trimmedShortName, deletedAt: null },
+      });
+      if (existingShortName) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "MSG-66",
+              message: "Tên viết tắt dự án đã tồn tại.",
+            },
+          },
+          { status: 400 }
+        );
+      }
+      formattedShortName = trimmedShortName;
     }
 
     if (!isValidUrl(systemHisUrl)) {
@@ -203,6 +243,7 @@ export async function POST(request: Request) {
       data: {
         projectName: projectName.trim(),
         projectCode: projectCode ? projectCode.trim() : null,
+        shortName: formattedShortName,
         systemHisUrl: systemHisUrl.trim(),
         defaultPassword: defaultPassword ? defaultPassword.trim() : null,
         description: description ? description.trim() : null,

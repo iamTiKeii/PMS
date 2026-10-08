@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { ToastProvider } from "./Toast";
+import { LoadingProvider } from "./LoadingProvider";
 import { Layers, ShieldCheck } from "lucide-react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -48,7 +49,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   if (pathname === "/login") {
-    return <ToastProvider>{children}</ToastProvider>;
+    return (
+      <ToastProvider>
+        <LoadingProvider>{children}</LoadingProvider>
+      </ToastProvider>
+    );
   }
 
   if (loading) {
@@ -74,12 +79,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastProvider>
-      <div className="min-h-screen flex bg-[#060913] text-slate-100">
-        <Sidebar user={user} />
-        <main className="flex-1 flex flex-col min-w-0 min-h-screen overflow-y-auto">
-          {children}
-        </main>
-      </div>
+      <LoadingProvider>
+        <div className="min-h-screen flex bg-[#060913] text-slate-100">
+          <Sidebar user={user} />
+          <main className="flex-1 flex flex-col min-w-0 min-h-screen overflow-y-auto">
+            {children}
+          </main>
+        </div>
+      </LoadingProvider>
     </ToastProvider>
   );
 }

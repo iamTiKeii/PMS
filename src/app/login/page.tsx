@@ -13,10 +13,13 @@ import {
   Layers,
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import { useLoading } from "@/components/LoadingProvider";
+import { ActionButton } from "@/components/ActionButton";
 
 export default function LoginPage() {
   const router = useRouter();
   const { success, error } = useToast();
+  const { withLoading } = useLoading();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -31,32 +34,38 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+    await withLoading(
+      "auth-login",
+      "Đang xác thực tài khoản & đăng nhập...",
+      async () => {
+        try {
+          const res = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+          });
 
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        const errorMsg = json.error?.details
-          ? `${json.error.message}: ${json.error.details}`
-          : json.error?.message || "Đăng nhập thất bại.";
-        error(errorMsg);
-        setLoading(false);
-        return;
-      }
+          const json = await res.json();
+          if (!res.ok || !json.success) {
+            const errorMsg = json.error?.details
+              ? `${json.error.message}: ${json.error.details}`
+              : json.error?.message || "Đăng nhập thất bại.";
+            error(errorMsg);
+            return;
+          }
 
-      success(`Xin chào ${json.data.user.fullName || json.data.user.username}! Đăng nhập thành công.`);
-      router.push("/");
-      router.refresh();
-    } catch (err) {
-      console.error(err);
-      error("Không thể kết nối đến máy chủ xác thực.");
-    } finally {
-      setLoading(false);
-    }
+          success(`Xin chào ${json.data.user.fullName || json.data.user.username}! Đăng nhập thành công.`);
+          router.push("/");
+          router.refresh();
+        } catch (err) {
+          console.error(err);
+          error("Không thể kết nối đến máy chủ xác thực.");
+        } finally {
+          setLoading(false);
+        }
+      },
+      { scope: "global", minDuration: 400 }
+    );
   };
 
   return (
@@ -133,20 +142,16 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button
+            <ActionButton
               type="submit"
-              disabled={loading}
-              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white text-sm font-bold shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all duration-300 disabled:opacity-50 hover:scale-[1.01]"
+              variant="primary"
+              isLoading={loading}
+              loadingText="Đang xác thực thông tin..."
+              icon={<ArrowRight className="w-4 h-4" />}
+              className="w-full py-3.5 text-sm font-bold shadow-lg shadow-blue-500/25 justify-center hover:scale-[1.01]"
             >
-              {loading ? (
-                <span>Đang xác thực thông tin...</span>
-              ) : (
-                <>
-                  <span>Đăng nhập vào Hệ thống</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+              Đăng nhập vào Hệ thống
+            </ActionButton>
           </form>
 
           {/* Security Features Trust Badges */}

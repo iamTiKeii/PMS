@@ -201,6 +201,12 @@ export default function NotificationsPage() {
     switch (t) {
       case "project":
         return "Dự án";
+      case "request":
+        return "QLYC";
+      case "reminder":
+        return "Nhắc việc";
+      case "attendance":
+        return "Chấm công";
       case "staff":
         return "Nhân sự";
       case "account":

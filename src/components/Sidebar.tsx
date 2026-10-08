@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Bell,
   Send,
+  UtensilsCrossed,
 } from "lucide-react";
 import { useToast } from "./Toast";
 
@@ -107,6 +108,14 @@ export function Sidebar({ user }: SidebarProps) {
           href: "/staff",
           icon: Users2,
           roles: ["admin", "pm", "user"],
+        },
+        {
+          label: "Đơn đặt nhóm",
+          href: "/group-orders",
+          icon: UtensilsCrossed,
+          roles: ["admin", "pm", "user"],
+          badge: "Order",
+          badgeColor: "bg-amber-500/15 text-amber-400 border-amber-500/30",
         },
       ],
     },

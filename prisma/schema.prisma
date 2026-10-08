@@ -23,6 +23,11 @@ model User {
   auditLogs          AuditLog[]
   createdNotifications Notification[]
   notificationReads  NotificationRead[]
+  createdRequests    ProjectRequest[]
+  paymentConfig      UserPaymentConfig?
+  createdGroupOrders GroupOrder[]       @relation("CreatedGroupOrders")
+  groupOrderMembers  GroupOrderMember[]
+  groupOrderItems    GroupOrderItem[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   deletedAt          DateTime?
@@ -42,6 +47,9 @@ model Staff {
   user               User?
   projectAssignments ProjectAssignment[]
   siteAccounts       StaffAccount[]
+  requestedRequests  ProjectRequest[]    @relation("RequesterStaff")
+  receivedRequests   ProjectRequest[]    @relation("ReceiverStaff")
+  followedRequests   RequestFollower[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   deletedAt          DateTime?
@@ -69,12 +77,15 @@ model Project {
   id              String              @id @default(cuid())
   projectCode     String?             @unique
   projectName     String              @unique
+  shortName       String?             @unique @map("short_name") @db.VarChar(50) // Prefix mã QLYC (VD: DKCT)
+  requestSequence Int                 @default(0) @map("request_sequence") // Sequence sinh mã QLYC
   systemHisUrl    String
   defaultPassword String?
   status          String              @default("active") // active, maintenance, closed
   description     String?
   assignments     ProjectAssignment[]
   siteAccounts    StaffAccount[]
+  requests        ProjectRequest[]
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   deletedAt       DateTime?
@@ -136,9 +147,10 @@ model AuditLog {
 
 model Notification {
   id          String    @id @default(cuid()) @db.VarChar(36)
+  eventCode   String?   @map("event_code") @db.VarChar(50)
   createdById String?   @map("created_by")
   createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  type        String    @db.VarChar(50) // project, staff, account, security, system, custom
+  type        String    @db.VarChar(50) // sys, project, request, reminder, attendance, security, staff, account
   title       String    @db.VarChar(255)
   content     String    @db.Text
   severity    String    @default("info") @db.VarChar(20) // info, success, warning, important, security
@@ -154,6 +166,7 @@ model Notification {
 
   @@index([createdAt])
   @@index([type])
+  @@index([eventCode])
   @@index([objectType, objectId])
   @@map("notifications")
 }
@@ -187,20 +200,246 @@ model NotificationDelivery {
 }
 
 model TelegramConfig {
+  id                String    @id @default(cuid()) @db.VarChar(36)
+  botName           String?   @map("bot_name") @db.VarChar(100)
+  botUsername       String?   @map("bot_username") @db.VarChar(100)
+  botTokenEncrypted String    @db.Text @map("bot_token_encrypted")
+  chatId            String    @map("chat_id") @db.VarChar(100)
+  chatName          String?   @map("chat_name") @db.VarChar(200)
+  enabled           Boolean   @default(true)
+  notifyProject     Boolean   @default(true) @map("notify_project")
+  notifyStaff       Boolean   @default(true) @map("notify_staff")
+  notifyAccount     Boolean   @default(true) @map("notify_account")
+  notifySystem      Boolean   @default(true) @map("notify_system")
+  lastTestAt        DateTime? @map("last_test_at")
+  lastTestStatus    String?   @map("last_test_status") @db.VarChar(50)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("telegram_config")
+}
+
+model NotificationSetting {
   id                String   @id @default(cuid()) @db.VarChar(36)
-  botName           String?  @map("bot_name") @db.VarChar(100)
-  botTokenEncrypted String   @db.Text @map("bot_token_encrypted")
-  chatId            String   @map("chat_id") @db.VarChar(100)
-  chatName          String?  @map("chat_name") @db.VarChar(200)
+  eventCode         String   @unique @map("event_code") @db.VarChar(50)
+  feedEnabled       Boolean  @default(true) @map("feed_enabled")
+  telegramEnabled   Boolean  @default(false) @map("telegram_enabled")
+  scheduleEnabled   Boolean  @default(false) @map("schedule_enabled")
+  scheduleTime      String?  @map("schedule_time") @db.VarChar(20) // VD: 07:50
+  remindBeforeDays  Int?     @map("remind_before_days") @default(1)
+  skipWeekends      Boolean  @default(true) @map("skip_weekends")
+  skipHolidays      Boolean  @default(true) @map("skip_holidays")
   enabled           Boolean  @default(true)
-  notifyProject     Boolean  @default(true) @map("notify_project")
-  notifyStaff       Boolean  @default(true) @map("notify_staff")
-  notifyAccount     Boolean  @default(true) @map("notify_account")
-  notifySystem      Boolean  @default(true) @map("notify_system")
+  updatedBy         String?  @map("updated_by")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  @@map("telegram_config")
+  @@map("notification_settings")
+}
+
+model ReminderLog {
+  id           String   @id @default(cuid()) @db.VarChar(36)
+  reminderType String   @map("reminder_type") @db.VarChar(50)
+  referenceId  String   @map("reference_id") @db.VarChar(100)
+  targetDate   String   @map("target_date") @db.VarChar(20)
+  sentAt       DateTime @default(now()) @map("sent_at")
+
+  @@unique([reminderType, referenceId, targetDate])
+  @@index([reminderType, targetDate])
+  @@map("reminder_logs")
+}
+
+model HospitalFacility {
+  id             String    @id @default(cuid()) @db.VarChar(36)
+  code           String    @unique @db.VarChar(50) // Mã CSKCB (VD: 01816)
+  name           String    @db.VarChar(255) // Tên bệnh viện / CSKCB
+  technicalLine  String?   @map("technical_line") @db.VarChar(100) // Tuyến CMKT
+  hospitalRank   String?   @map("hospital_rank") @db.VarChar(100) // Hạng bệnh viện
+  technicalLevel String?   @map("technical_level") @db.VarChar(100) // Cấp CMKT
+  score          String?   @db.VarChar(50) // Điểm
+  address        String?   @db.VarChar(500) // Địa chỉ cơ sở
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([code])
+  @@index([name])
+  @@map("hospital_facilities")
+}
+
+model ProjectRequest {
+  id            String            @id @default(cuid()) @db.VarChar(36)
+  projectId     String            @map("project_id")
+  project       Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requestCode   String            @unique @map("request_code") @db.VarChar(50) // VD: DKCT00001
+  requesterId   String?           @map("requester_id")
+  requester     Staff?            @relation("RequesterStaff", fields: [requesterId], references: [id], onDelete: SetNull)
+  requesterName String?           @map("requester_name") @db.VarChar(255) // Tên người yêu cầu nếu ngoài danh mục
+  department    String?           @db.VarChar(255) // Khoa / phòng
+  receiverId    String?           @map("receiver_id")
+  receiver      Staff?            @relation("ReceiverStaff", fields: [receiverId], references: [id], onDelete: SetNull)
+  content       String            @db.Text // Rich Text HTML/Markdown
+  dueDate       DateTime?         @map("due_date") @db.Date // Due Date
+  jiraUrl       String?           @map("jira_url") @db.VarChar(2000) // Link Jira
+  status        String            @default("pending") @db.VarChar(50) // Trạng thái nếu cần
+  createdById   String?           @map("created_by")
+  createdByUser User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  followers     RequestFollower[]
+  activities    ProjectRequestActivity[]
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  deletedAt     DateTime?         @map("deleted_at")
+
+  @@index([projectId])
+  @@index([requestCode])
+  @@index([deletedAt])
+  @@map("project_requests")
+}
+
+model RequestFollower {
+  id        String         @id @default(cuid()) @db.VarChar(36)
+  requestId String         @map("request_id") @db.VarChar(36)
+  request   ProjectRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  staffId   String         @map("staff_id")
+  staff     Staff          @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  @@unique([requestId, staffId])
+  @@map("request_followers")
+}
+
+model ProjectRequestActivity {
+  id           String         @id @default(cuid()) @db.VarChar(36)
+  requestId    String         @map("request_id") @db.VarChar(36)
+  request      ProjectRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  eventCode    String         @map("event_code") @db.VarChar(50)
+  actorId      String?        @map("actor_id") @db.VarChar(50)
+  actorName    String?        @map("actor_name") @db.VarChar(255)
+  eventTime    DateTime       @default(now()) @map("event_time")
+  title        String         @db.VarChar(255)
+  description  String?        @db.Text
+  metadataJson String?        @map("metadata_json") @db.Text
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  @@index([requestId])
+  @@index([eventCode])
+  @@index([eventTime])
+  @@map("project_request_activities")
+}
+
+model UserPaymentConfig {
+  id             String   @id @default(cuid()) @db.VarChar(36)
+  userId         String   @unique @map("user_id") @db.VarChar(36)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankCode       String   @map("bank_code") @db.VarChar(50) // VD: MB, VCB, TCB, ACB
+  bankName       String   @map("bank_name") @db.VarChar(100) // Tên ngân hàng
+  accountNumber  String   @map("account_number") @db.VarChar(50) // Số tài khoản
+  accountName    String   @map("account_name") @db.VarChar(100) // Tên chủ tài khoản
+  defaultContent String?  @default("ORDER") @map("default_content") @db.VarChar(100) // Cú pháp chuyển khoản mặc định
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("user_payment_configs")
+}
+
+model GroupOrder {
+  id            String                       @id @default(cuid()) @db.VarChar(36)
+  orderCode     String                       @unique @map("order_code") @db.VarChar(50) // VD: ORD261009001
+  title         String                       @db.VarChar(255) // Tên đơn: VD: Order trà sữa chiều 09/10
+  description   String?                      @db.Text
+  createdById   String                       @map("created_by") @db.VarChar(36) // Trưởng nhóm tạo đơn
+  createdByUser User                         @relation("CreatedGroupOrders", fields: [createdById], references: [id], onDelete: Cascade)
+  status        String                       @default("open") @db.VarChar(20) // open, closed, completed
+  orderDeadline DateTime?                    @map("order_deadline")
+  closedAt      DateTime?                    @map("closed_at")
+  totalAmount   Int                          @default(0) @map("total_amount") // Tổng tiền của cả đơn
+  createdAt     DateTime                     @default(now()) @map("created_at")
+  updatedAt     DateTime                     @updatedAt @map("updated_at")
+  deletedAt     DateTime?                    @map("deleted_at")
+
+  members       GroupOrderMember[]
+  items         GroupOrderItem[]
+  reminders     GroupOrderPaymentReminder[]
+  activities    GroupOrderActivity[]
+
+  @@index([createdById])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("group_orders")
+}
+
+model GroupOrderMember {
+  id                String     @id @default(cuid()) @db.VarChar(36)
+  groupOrderId      String     @map("group_order_id") @db.VarChar(36)
+  groupOrder        GroupOrder @relation(fields: [groupOrderId], references: [id], onDelete: Cascade)
+  userId            String     @map("user_id") @db.VarChar(36)
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentStatus     String     @default("pending") @map("payment_status") @db.VarChar(20) // pending, paid
+  paidAt            DateTime?  @map("paid_at")
+  paidConfirmedById String?    @map("paid_confirmed_by") @db.VarChar(36)
+  notes             String?    @db.VarChar(255)
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  @@unique([groupOrderId, userId])
+  @@index([groupOrderId])
+  @@index([userId])
+  @@map("group_order_members")
+}
+
+model GroupOrderItem {
+  id           String     @id @default(cuid()) @db.VarChar(36)
+  groupOrderId String     @map("group_order_id") @db.VarChar(36)
+  groupOrder   GroupOrder @relation(fields: [groupOrderId], references: [id], onDelete: Cascade)
+  userId       String     @map("user_id") @db.VarChar(36)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemName     String     @map("item_name") @db.VarChar(255)
+  quantity     Int        @default(1)
+  note         String?    @db.VarChar(255)
+  unitPrice    Int?       @map("unit_price") // Đơn giá thực tế trưởng nhóm nhập
+  totalAmount  Int?       @map("total_amount") // quantity * unitPrice
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  @@index([groupOrderId])
+  @@index([userId])
+  @@map("group_order_items")
+}
+
+model GroupOrderPaymentReminder {
+  id                String     @id @default(cuid()) @db.VarChar(36)
+  groupOrderId      String     @map("group_order_id") @db.VarChar(36)
+  groupOrder        GroupOrder @relation(fields: [groupOrderId], references: [id], onDelete: Cascade)
+  createdById       String     @map("created_by") @db.VarChar(36)
+  content           String     @db.Text
+  bankInfo          String?    @map("bank_info") @db.Text
+  qrDataUrl         String?    @map("qr_data_url") @db.Text
+  unpaidCount       Int        @default(0) @map("unpaid_count")
+  unpaidAmount      Int        @default(0) @map("unpaid_amount")
+  telegramMessageId String?    @map("telegram_message_id") @db.VarChar(100)
+  sentAt            DateTime   @default(now()) @map("sent_at")
+  createdAt         DateTime   @default(now()) @map("created_at")
+
+  @@index([groupOrderId])
+  @@map("group_order_payment_reminders")
+}
+
+model GroupOrderActivity {
+  id           String     @id @default(cuid()) @db.VarChar(36)
+  groupOrderId String     @map("group_order_id") @db.VarChar(36)
+  groupOrder   GroupOrder @relation(fields: [groupOrderId], references: [id], onDelete: Cascade)
+  eventCode    String     @map("event_code") @db.VarChar(50)
+  actorId      String?    @map("actor_id") @db.VarChar(50)
+  actorName    String?    @map("actor_name") @db.VarChar(255)
+  eventTime    DateTime   @default(now()) @map("event_time")
+  title        String     @db.VarChar(255)
+  description  String?    @db.Text
+  metadataJson String?    @map("metadata_json") @db.Text
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  @@index([groupOrderId])
+  @@index([eventCode])
+  @@index([eventTime])
+  @@map("group_order_activities")
 }
 
 

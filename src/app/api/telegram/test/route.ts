@@ -46,6 +46,20 @@ export async function POST(req: Request) {
 
     const result = await testTelegramConnection(botToken.trim(), chatId.trim());
 
+    // Update test status in database if config exists
+    const config = await prisma.telegramConfig.findFirst({
+      orderBy: { createdAt: "desc" },
+    });
+    if (config) {
+      await prisma.telegramConfig.update({
+        where: { id: config.id },
+        data: {
+          lastTestAt: new Date(),
+          lastTestStatus: result.success ? "success" : "failed",
+        },
+      });
+    }
+
     if (!result.success) {
       return NextResponse.json(
         { success: false, error: { code: "MSG-82", message: result.message } },

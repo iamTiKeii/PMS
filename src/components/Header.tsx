@@ -154,7 +154,10 @@ export function Header({ title, subtitle, actionButton }: HeaderProps) {
         return "Bảng tin Thông báo";
       case "/telegram":
         return "Cấu hình Telegram";
+      case "/group-orders":
+        return "Đơn đặt nhóm";
       default:
+        if (path.startsWith("/group-orders/")) return "Chi tiết đơn đặt nhóm";
         return title;
     }
   };

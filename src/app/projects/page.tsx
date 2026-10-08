@@ -27,6 +27,9 @@ import {
   ArrowUpRight,
   Lock,
   User,
+  Building2,
+  Loader2,
+  X,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { ExcelImportModal, ColumnDefinition } from "@/components/ExcelImportModal";
@@ -69,6 +72,7 @@ export default function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<any>(null);
   const [projectName, setProjectName] = useState("");
   const [projectCode, setProjectCode] = useState("");
+  const [shortName, setShortName] = useState("");
   const [systemHisUrl, setSystemHisUrl] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("active");
@@ -78,6 +82,13 @@ export default function ProjectsPage() {
   const [level2StaffId, setLevel2StaffId] = useState("");
   const [level3StaffId, setLevel3StaffId] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Hospital Facility search state for project creation
+  const [hospitalSearch, setHospitalSearch] = useState("");
+  const [hospitalResults, setHospitalResults] = useState<any[]>([]);
+  const [searchingHospitals, setSearchingHospitals] = useState(false);
+  const [selectedHospital, setSelectedHospital] = useState<any>(null);
+  const [showHospitalDropdown, setShowHospitalDropdown] = useState(false);
 
   // Excel Import Modal state
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -175,10 +186,78 @@ export default function ProjectsPage() {
     return () => clearTimeout(delayDebounce);
   }, [search, statusFilter]);
 
+  useEffect(() => {
+    if (!hospitalSearch.trim() || !modalOpen || editingProject) {
+      setHospitalResults([]);
+      setSearchingHospitals(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchingHospitals(true);
+      try {
+        const res = await fetch(`/api/hospitals?q=${encodeURIComponent(hospitalSearch.trim())}&limit=12`);
+        const json = await res.json();
+        if (json.success) {
+          setHospitalResults(json.data || []);
+          setShowHospitalDropdown(true);
+        }
+      } catch (err) {
+        console.error("Error searching hospitals:", err);
+      } finally {
+        setSearchingHospitals(false);
+      }
+    }, 280);
+
+    return () => clearTimeout(timer);
+  }, [hospitalSearch, modalOpen, editingProject]);
+
+  const handleSelectHospital = (h: any) => {
+    setSelectedHospital(h);
+    setProjectCode(h.code);
+    setProjectName(h.name);
+
+    // Gợi ý shortName từ chữ cái đầu của tên hoặc mã
+    if (!shortName.trim()) {
+      const words = h.name.split(/\s+/).filter(Boolean);
+      const initials = words.map((w: string) => w[0]).join("").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (initials.length >= 2 && initials.length <= 10) {
+        setShortName(initials);
+      } else if (h.code) {
+        const c = h.code.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        setShortName(`BV${c}`.slice(0, 10));
+      }
+    }
+
+    // Tự động điền mô tả từ tuyến, hạng, địa chỉ nếu chưa có
+    if (!description.trim()) {
+      const parts: string[] = [];
+      if (h.technicalLine) parts.push(`Tuyến: ${h.technicalLine}`);
+      if (h.hospitalRank) parts.push(`Hạng: ${h.hospitalRank}`);
+      if (h.address) parts.push(`Địa chỉ: ${h.address}`);
+      setDescription(parts.join(" • "));
+    }
+
+    setShowHospitalDropdown(false);
+    success(`Đã lấy Mã "${h.code}" và Tên "${h.name}" từ CSKCB!`);
+  };
+
+  const handleClearSelectedHospital = () => {
+    setSelectedHospital(null);
+    setHospitalSearch("");
+    setHospitalResults([]);
+    setShowHospitalDropdown(false);
+  };
+
   const openAddModal = () => {
     setEditingProject(null);
+    setSelectedHospital(null);
+    setHospitalSearch("");
+    setHospitalResults([]);
+    setShowHospitalDropdown(false);
     setProjectName("");
     setProjectCode("");
+    setShortName("");
     setSystemHisUrl("");
     setDefaultPassword("");
     setShowDefaultPassword(false);
@@ -192,8 +271,13 @@ export default function ProjectsPage() {
 
   const openEditModal = (p: any) => {
     setEditingProject(p);
+    setSelectedHospital(null);
+    setHospitalSearch("");
+    setHospitalResults([]);
+    setShowHospitalDropdown(false);
     setProjectName(p.projectName);
     setProjectCode(p.projectCode || "");
+    setShortName(p.shortName || "");
     setSystemHisUrl(p.systemHisUrl);
     setDefaultPassword(p.defaultPassword || "");
     setShowDefaultPassword(false);
@@ -235,6 +319,7 @@ export default function ProjectsPage() {
         body: JSON.stringify({
           projectName,
           projectCode,
+          shortName: shortName.trim().toUpperCase() || null,
           systemHisUrl,
           defaultPassword: defaultPassword.trim() || null,
           description,
@@ -489,6 +574,11 @@ export default function ProjectsPage() {
                       <span className="text-[10px] font-mono font-extrabold px-2.5 py-1 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 uppercase tracking-wider">
                         {p.projectCode || "PROJECT"}
                       </span>
+                      {p.shortName && (
+                        <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-xl bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 uppercase" title="Tên viết tắt / Prefix sinh mã yêu cầu (QLYC)">
+                          QLYC: {p.shortName}
+                        </span>
+                      )}
                       <span
                         className={`text-[10px] font-extrabold px-2.5 py-1 rounded-xl flex items-center gap-1.5 ${p.status === "active"
                             ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
@@ -615,20 +705,31 @@ export default function ProjectsPage() {
                 </div>
 
                 {/* Card Footer: Credential Count & Open Detail & Vault Modal */}
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs relative z-10">
+                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2 text-xs relative z-10 flex-wrap">
                   <div className="flex items-center gap-1.5 text-slate-400">
                     <KeyRound className="w-3.5 h-3.5 text-amber-400" />
                     <span>Tài khoản trong két: <strong className="text-white">{p.accountCount || 0}</strong></span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => openProjectDetail(p)}
-                    className="px-3 py-1.5 rounded-xl bg-blue-600/15 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
-                  >
-                    <span>Chi tiết & Két tài khoản</span>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openProjectDetail(p)}
+                      className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1 transition-all"
+                      title="Xem nhanh két tài khoản"
+                    >
+                      <span>Két nhanh</span>
+                    </button>
+                    <Link
+                      href={`/projects/${p.id}`}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-cyan-600/20 hover:from-blue-600 hover:to-cyan-600 text-cyan-300 hover:text-white border border-cyan-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm"
+                      title="Mở màn hình Chi tiết Dự án & Quản lý yêu cầu (M4)"
+                    >
+                      <FolderKanban className="w-3.5 h-3.5" />
+                      <span>Chi tiết dự án M4</span>
+                      <ArrowUpRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))
@@ -645,6 +746,164 @@ export default function ProjectsPage() {
         maxWidth="max-w-2xl"
       >
         <form onSubmit={handleSave} className="space-y-4 text-xs">
+          {/* Quick Lookup from CSKCB Catalog (Chỉ hiện khi Tạo mới dự án) */}
+          {!editingProject && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-950/40 via-cyan-950/30 to-indigo-950/40 border border-blue-500/30 space-y-2.5 relative">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-xl bg-blue-500/20 text-blue-400">
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-white block">
+                      Chọn nhanh từ Danh mục Cơ sở Khám chữa bệnh
+                    </span>
+                    <span className="text-[10px] text-blue-300/80">
+                      Tự động gán Mã dự án = Mã CSKCB, Tên dự án = Tên bệnh viện (11,346 cơ sở)
+                    </span>
+                  </div>
+                </div>
+                {selectedHospital && (
+                  <button
+                    type="button"
+                    onClick={handleClearSelectedHospital}
+                    className="text-[11px] text-slate-400 hover:text-rose-400 flex items-center gap-1 font-semibold transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Bỏ chọn
+                  </button>
+                )}
+              </div>
+
+              {selectedHospital ? (
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                        {selectedHospital.code}
+                      </span>
+                      <span className="text-xs font-bold text-white">
+                        {selectedHospital.name}
+                      </span>
+                      {selectedHospital.technicalLine && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                          {selectedHospital.technicalLine}
+                        </span>
+                      )}
+                      {selectedHospital.hospitalRank && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                          {selectedHospital.hospitalRank}
+                        </span>
+                      )}
+                    </div>
+                    {selectedHospital.address && (
+                      <p className="text-[11px] text-slate-400 leading-snug">
+                        📍 {selectedHospital.address}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedHospital(null);
+                      setHospitalSearch("");
+                    }}
+                    className="text-[10px] text-emerald-400 hover:underline shrink-0 font-medium"
+                  >
+                    Đổi CS khác
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <div className="relative flex items-center">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={hospitalSearch}
+                      onChange={(e) => {
+                        setHospitalSearch(e.target.value);
+                        setShowHospitalDropdown(true);
+                      }}
+                      onFocus={() => {
+                        if (hospitalResults.length > 0) setShowHospitalDropdown(true);
+                      }}
+                      placeholder="Tìm theo Mã (01001, 79001...), Tên bệnh viện (Bạch Mai, Đa khoa...), hoặc Địa chỉ..."
+                      className="w-full pl-10 pr-10 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/60 shadow-inner"
+                    />
+                    {searchingHospitals && (
+                      <div className="absolute right-3">
+                        <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                      </div>
+                    )}
+                    {hospitalSearch && !searchingHospitals && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHospitalSearch("");
+                          setHospitalResults([]);
+                          setShowHospitalDropdown(false);
+                        }}
+                        className="absolute right-3 text-slate-400 hover:text-white"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown search results */}
+                  {showHospitalDropdown && hospitalSearch.trim().length >= 2 && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto divide-y divide-slate-800">
+                      {searchingHospitals ? (
+                        <div className="p-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                          <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                          <span>Đang tra cứu cơ sở y tế...</span>
+                        </div>
+                      ) : hospitalResults.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-slate-400">
+                          Không tìm thấy cơ sở y tế phù hợp với &quot;{hospitalSearch}&quot;. Bạn có thể nhập tay thông tin bên dưới.
+                        </div>
+                      ) : (
+                        hospitalResults.map((h) => (
+                          <div
+                            key={h.code}
+                            onClick={() => handleSelectHospital(h)}
+                            className="p-2.5 hover:bg-blue-600/20 cursor-pointer transition-colors group flex items-start gap-2.5 text-left"
+                          >
+                            <span className="font-mono font-bold text-[11px] px-2 py-0.5 rounded-lg bg-blue-500/15 text-cyan-300 border border-blue-500/30 shrink-0 mt-0.5 group-hover:bg-blue-500 group-hover:text-white transition-all">
+                              {h.code}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-white text-xs group-hover:text-blue-200">
+                                  {h.name}
+                                </span>
+                                {h.technicalLine && (
+                                  <span className="text-[10px] text-slate-400">
+                                    • {h.technicalLine}
+                                  </span>
+                                )}
+                                {h.hospitalRank && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                                    {h.hospitalRank}
+                                  </span>
+                                )}
+                              </div>
+                              {h.address && (
+                                <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                                  📍 {h.address}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
@@ -674,6 +933,20 @@ export default function ProjectsPage() {
             </div>
 
             <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                <span>Tên viết tắt (Prefix QLYC)</span>
+                <span className="text-[10px] text-cyan-400 font-mono font-normal">A-Z, 0-9</span>
+              </label>
+              <input
+                type="text"
+                value={shortName}
+                onChange={(e) => setShortName(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+                placeholder="VD: DKCT, BVBM..."
+                className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 uppercase font-mono shadow-inner"
+              />
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                 Trạng thái
               </label>
@@ -869,6 +1142,11 @@ export default function ProjectsPage() {
                 <span className="text-[10px] font-mono font-extrabold px-2.5 py-1 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 uppercase">
                   {selectedProject?.projectCode || "PROJECT"}
                 </span>
+                {selectedProject?.shortName && (
+                  <span className="text-[10px] font-mono font-extrabold px-2.5 py-1 rounded-xl bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 uppercase">
+                    Prefix QLYC: {selectedProject.shortName}
+                  </span>
+                )}
                 <span
                   className={`text-[10px] font-extrabold px-2.5 py-1 rounded-xl flex items-center gap-1.5 ${
                     selectedProject?.status === "active"
@@ -889,6 +1167,14 @@ export default function ProjectsPage() {
                       ? "Bảo trì"
                       : "Đã đóng"}
                 </span>
+
+                <Link
+                  href={`/projects/${selectedProject?.id}`}
+                  className="px-3 py-1 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-white border border-cyan-500/40 text-[11px] font-bold inline-flex items-center gap-1 ml-auto transition-all"
+                >
+                  <FolderKanban className="w-3.5 h-3.5" />
+                  <span>Mở Trang Chi tiết & Quản lý yêu cầu (M4) ↗</span>
+                </Link>
               </div>
 
               {selectedProject?.defaultPassword && (

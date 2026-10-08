@@ -80,6 +80,8 @@ export async function GET(
         id: project.id,
         projectCode: project.projectCode,
         projectName: project.projectName,
+        shortName: project.shortName,
+        requestSequence: project.requestSequence,
         systemHisUrl: project.systemHisUrl,
         defaultPassword: project.defaultPassword,
         status: project.status,
@@ -118,6 +120,7 @@ export async function PUT(
     const {
       projectName,
       projectCode,
+      shortName,
       systemHisUrl,
       defaultPassword,
       status,
@@ -139,6 +142,45 @@ export async function PUT(
         { success: false, error: { code: "MSG-04", message: "Dự án không tồn tại." } },
         { status: 404 }
       );
+    }
+
+    // Validation short_name
+    let updatedShortName = existingProject.shortName;
+    if (shortName !== undefined) {
+      if (shortName && shortName.trim()) {
+        const trimmedShortName = shortName.trim().toUpperCase();
+        if (!/^[A-Z0-9]{2,20}$/.test(trimmedShortName)) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: "MSG-67",
+                message: "Tên viết tắt dự án không hợp lệ. Chỉ chấp nhận 2–20 ký tự chữ và số (A-Z, 0-9).",
+              },
+            },
+            { status: 400 }
+          );
+        }
+
+        const dupShortName = await prisma.project.findFirst({
+          where: { shortName: trimmedShortName, id: { not: id }, deletedAt: null },
+        });
+        if (dupShortName) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: "MSG-66",
+                message: "Tên viết tắt dự án đã tồn tại.",
+              },
+            },
+            { status: 400 }
+          );
+        }
+        updatedShortName = trimmedShortName;
+      } else {
+        updatedShortName = null;
+      }
     }
 
     if (projectName && projectName.trim() !== existingProject.projectName) {
@@ -203,6 +245,7 @@ export async function PUT(
       data: {
         projectName: projectName ? projectName.trim() : existingProject.projectName,
         projectCode: projectCode !== undefined ? (projectCode ? projectCode.trim() : null) : existingProject.projectCode,
+        shortName: updatedShortName,
         systemHisUrl: systemHisUrl ? systemHisUrl.trim() : existingProject.systemHisUrl,
         defaultPassword: defaultPassword !== undefined ? (defaultPassword ? defaultPassword.trim() : null) : existingProject.defaultPassword,
         status: status || existingProject.status,
