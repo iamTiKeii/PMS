@@ -92,13 +92,13 @@ export function RichTextEditor({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-700/80 bg-slate-950 overflow-hidden focus-within:border-blue-500/80 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-inner">
+    <div className="rounded-md border border-slate-300 bg-white overflow-hidden focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 transition-colors shadow-xs">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-900/90 border-b border-slate-800 text-slate-300">
+      <div className="flex flex-wrap items-center gap-1 p-1.5 bg-slate-50 border-b border-slate-200 text-slate-600">
         <button
           type="button"
           onClick={() => executeCommand("bold")}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="In đậm (Bold - Ctrl+B)"
         >
           <Bold className="w-3.5 h-3.5" />
@@ -106,7 +106,7 @@ export function RichTextEditor({
         <button
           type="button"
           onClick={() => executeCommand("italic")}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="In nghiêng (Italic - Ctrl+I)"
         >
           <Italic className="w-3.5 h-3.5" />
@@ -114,18 +114,18 @@ export function RichTextEditor({
         <button
           type="button"
           onClick={() => executeCommand("underline")}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="Gạch chân (Underline - Ctrl+U)"
         >
           <Underline className="w-3.5 h-3.5" />
         </button>
 
-        <div className="w-[1px] h-4 bg-slate-700 mx-1" />
+        <div className="w-[1px] h-4 bg-slate-200 mx-1" />
 
         <button
           type="button"
           onClick={() => executeCommand("formatBlock", "<h1>")}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="Tiêu đề 1 (Heading 1)"
         >
           <Heading1 className="w-3.5 h-3.5" />
@@ -133,18 +133,18 @@ export function RichTextEditor({
         <button
           type="button"
           onClick={() => executeCommand("formatBlock", "<h2>")}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="Tiêu đề 2 (Heading 2)"
         >
           <Heading2 className="w-3.5 h-3.5" />
         </button>
 
-        <div className="w-[1px] h-4 bg-slate-700 mx-1" />
+        <div className="w-[1px] h-4 bg-slate-200 mx-1" />
 
         <button
           type="button"
           onClick={() => executeCommand("insertUnorderedList")}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="Danh sách dấu đầu dòng"
         >
           <List className="w-3.5 h-3.5" />
@@ -152,18 +152,18 @@ export function RichTextEditor({
         <button
           type="button"
           onClick={() => executeCommand("insertOrderedList")}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="Danh sách số"
         >
           <ListOrdered className="w-3.5 h-3.5" />
         </button>
 
-        <div className="w-[1px] h-4 bg-slate-700 mx-1" />
+        <div className="w-[1px] h-4 bg-slate-200 mx-1" />
 
         <button
           type="button"
           onClick={() => executeCommand("formatBlock", "<blockquote>")}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="Trích dẫn (Quote)"
         >
           <Quote className="w-3.5 h-3.5" />
@@ -171,7 +171,7 @@ export function RichTextEditor({
         <button
           type="button"
           onClick={() => executeCommand("formatBlock", "<pre>")}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="Khối mã (Code block)"
         >
           <Code className="w-3.5 h-3.5" />
@@ -179,7 +179,7 @@ export function RichTextEditor({
         <button
           type="button"
           onClick={handleInsertLink}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="Chèn liên kết URL"
         >
           <LinkIcon className="w-3.5 h-3.5" />
@@ -187,18 +187,18 @@ export function RichTextEditor({
         <button
           type="button"
           onClick={handleInsertTable}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="Chèn bảng dữ liệu"
         >
           <TableIcon className="w-3.5 h-3.5" />
         </button>
 
-        <div className="w-[1px] h-4 bg-slate-700 mx-1 ml-auto" />
+        <div className="w-[1px] h-4 bg-slate-200 mx-1 ml-auto" />
 
         <button
           type="button"
           onClick={() => executeCommand("undo")}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="Hoàn tác (Undo)"
         >
           <Undo className="w-3.5 h-3.5" />
@@ -206,7 +206,7 @@ export function RichTextEditor({
         <button
           type="button"
           onClick={() => executeCommand("redo")}
-          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-white transition-colors"
+          className="p-1.5 rounded hover:bg-slate-200 hover:text-slate-900 transition-colors"
           title="Làm lại (Redo)"
         >
           <Redo className="w-3.5 h-3.5" />
@@ -220,7 +220,7 @@ export function RichTextEditor({
         onInput={handleInput}
         style={{ minHeight }}
         data-placeholder={placeholder}
-        className="p-4 text-sm text-slate-100 outline-none overflow-y-auto max-h-[420px] prose prose-invert prose-sm max-w-none empty:before:content-[attr(data-placeholder)] empty:before:text-slate-500 empty:before:pointer-events-none"
+        className="p-3 text-xs text-slate-800 outline-none overflow-y-auto max-h-[420px] prose prose-sm max-w-none empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 empty:before:pointer-events-none"
       />
     </div>
   );

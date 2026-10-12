@@ -33,7 +33,8 @@ import {
 import { VIETNAM_BANKS, getVietQrUrl } from "@/lib/group-orders";
 import { useLoading } from "@/components/LoadingProvider";
 import { ActionButton } from "@/components/ActionButton";
-import { SectionLoading } from "@/components/SectionLoading";
+import { GroupOrderDetailSkeleton } from "@/components/Skeleton";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 
 export default function GroupOrderDetailPage({
   params,
@@ -44,6 +45,7 @@ export default function GroupOrderDetailPage({
   const orderId = resolvedParams.id;
   const router = useRouter();
   const { success, error } = useToast();
+  const { confirm } = useConfirm();
   const { withLoading } = useLoading();
 
   const [order, setOrder] = useState<any>(null);
@@ -67,6 +69,7 @@ export default function GroupOrderDetailPage({
   const [remBankCode, setRemBankCode] = useState("MB");
   const [remAccountNumber, setRemAccountNumber] = useState("");
   const [remAccountName, setRemAccountName] = useState("");
+  const [remBranch, setRemBranch] = useState("");
   const [remContent, setRemContent] = useState("");
   const [remSendTelegram, setRemSendTelegram] = useState(true);
   const [sendingReminder, setSendingReminder] = useState(false);
@@ -98,6 +101,7 @@ export default function GroupOrderDetailPage({
           setRemBankCode(json.data.leaderPaymentConfig.bankCode || "MB");
           setRemAccountNumber(json.data.leaderPaymentConfig.accountNumber || "");
           setRemAccountName(json.data.leaderPaymentConfig.accountName || "");
+          setRemBranch(json.data.leaderPaymentConfig.branch || "");
           setRemContent(`${json.data.leaderPaymentConfig.defaultContent || "ORDER"} ${json.data.orderCode}`);
         } else {
           setRemContent(`ORDER ${json.data.orderCode}`);
@@ -119,9 +123,13 @@ export default function GroupOrderDetailPage({
 
   // Đóng đơn (Trưởng nhóm)
   const handleCloseOrder = async () => {
-    if (!confirm("Bạn có chắc chắn muốn đóng đơn order? Sau khi đóng, thành viên sẽ không thể thêm hoặc sửa món nữa.")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Đóng đơn order?",
+      message: "Sau khi đóng đơn, thành viên sẽ không thể thêm hoặc sửa món nữa. Bạn có chắc chắn muốn chốt đơn gom món này?",
+      confirmText: "Đóng đơn ngay",
+      variant: "warning",
+    });
+    if (!ok) return;
     await withLoading(
       "close-order",
       "Đang đóng đơn order...",
@@ -210,7 +218,13 @@ export default function GroupOrderDetailPage({
 
   // Xóa món
   const handleDeleteItem = async (itemId: string, itemTitle: string) => {
-    if (!confirm(`Bạn có chắc muốn xóa món "${itemTitle}" khỏi order?`)) return;
+    const ok = await confirm({
+      title: "Xóa món khỏi order?",
+      message: `Bạn có chắc muốn xóa món "${itemTitle}" khỏi order? Hành động này sẽ cập nhật lại tổng số lượng và tiền món.`,
+      confirmText: "Xóa món",
+      variant: "danger",
+    });
+    if (!ok) return;
     await withLoading(
       "delete-item",
       `Đang xóa món "${itemTitle}"...`,
@@ -271,6 +285,15 @@ export default function GroupOrderDetailPage({
   // Xác nhận đã thu tiền của thành viên
   const handleToggleMemberPaid = async (memberUserId: string, currentStatus: string) => {
     const nextStatus = currentStatus === "paid" ? "pending" : "paid";
+    if (nextStatus === "paid") {
+      const ok = await confirm({
+        title: "Xác nhận đã thu tiền?",
+        message: "Bạn có chắc chắn muốn đánh dấu thành viên này đã hoàn tất thanh toán phần tiền món?",
+        confirmText: "Xác nhận thanh toán",
+        variant: "primary",
+      });
+      if (!ok) return;
+    }
     await withLoading(
       "toggle-paid",
       nextStatus === "paid" ? "Đang xác nhận đã thu tiền..." : "Đang hủy xác nhận thu tiền...",
@@ -323,6 +346,7 @@ export default function GroupOrderDetailPage({
               bankCode: remBankCode,
               accountNumber: remAccountNumber,
               accountName: remAccountName,
+              branch: remBranch,
               customContent: remContent,
               sendTelegram: remSendTelegram,
             }),
@@ -391,7 +415,13 @@ export default function GroupOrderDetailPage({
 
   // Xóa đơn
   const handleDeleteOrder = async () => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa đơn "${order.title}"?`)) return;
+    const ok = await confirm({
+      title: "Xóa đơn đặt nhóm?",
+      message: `Bạn có chắc chắn muốn xóa đơn "${order.title}"? Toàn bộ danh sách món và thông tin thanh toán sẽ bị xóa.`,
+      confirmText: "Xóa đơn",
+      variant: "danger",
+    });
+    if (!ok) return;
     await withLoading(
       "delete-order",
       "Đang xóa đơn đặt nhóm...",
@@ -427,9 +457,11 @@ export default function GroupOrderDetailPage({
 
   if (loading || !order) {
     return (
-      <div className="flex-1 flex flex-col min-h-screen">
-        <Header title="Đang tải..." />
-        <SectionLoading text="Đang tải dữ liệu đơn đặt nhóm..." minHeight="360px" />
+      <div className="flex-1 flex flex-col min-h-screen bg-slate-50">
+        <Header title="Chi tiết Đơn đặt nhóm" />
+        <div className="p-4 sm:p-6 max-w-7xl w-full mx-auto">
+          <GroupOrderDetailSkeleton />
+        </div>
       </div>
     );
   }
@@ -440,7 +472,7 @@ export default function GroupOrderDetailPage({
   const isCompleted = order.status === "completed";
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen">
+    <div className="flex-1 flex flex-col min-h-screen bg-slate-50">
       <Header
         title={order.title}
         subtitle={`Mã đơn: ${order.orderCode} • Trưởng nhóm: ${order.createdByUser?.fullName || order.createdByUser?.username}`}
@@ -448,7 +480,7 @@ export default function GroupOrderDetailPage({
           <div className="flex items-center gap-2">
             <Link
               href="/group-orders"
-              className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all"
+              className="px-3 py-1.5 rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Quay lại</span>
@@ -459,7 +491,7 @@ export default function GroupOrderDetailPage({
               <button
                 type="button"
                 onClick={handleCloseOrder}
-                className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-amber-600/20"
+                className="px-3.5 py-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs"
               >
                 <Lock className="w-3.5 h-3.5" />
                 <span>Đóng đơn order</span>
@@ -471,7 +503,7 @@ export default function GroupOrderDetailPage({
               <button
                 type="button"
                 onClick={() => setReminderModalOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/25"
+                className="px-3.5 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Nhắc thanh toán (Telegram)</span>
@@ -484,7 +516,7 @@ export default function GroupOrderDetailPage({
                 <button
                   type="button"
                   onClick={openEditOrder}
-                  className="p-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-600 transition-colors"
+                  className="p-1.5 rounded-md bg-white border border-slate-300 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-xs"
                   title="Sửa thông tin đơn"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
@@ -492,7 +524,7 @@ export default function GroupOrderDetailPage({
                 <button
                   type="button"
                   onClick={handleDeleteOrder}
-                  className="p-2 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500 hover:text-white transition-all"
+                  className="p-1.5 rounded-md bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors shadow-xs"
                   title="Xóa đơn này"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -503,74 +535,70 @@ export default function GroupOrderDetailPage({
         }
       />
 
-      <div className="p-8 space-y-6 max-w-7xl mx-auto w-full">
-        {/* Header Hero Banner */}
-        <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="p-6 md:p-8 space-y-5 max-w-7xl mx-auto w-full">
+        {/* Header Summary Banner */}
+        <div className="p-5 rounded-lg bg-white border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono text-xs font-semibold text-slate-700 px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                {order.orderCode}
+              </span>
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono text-xs font-black text-cyan-300 px-3 py-1 rounded-xl bg-cyan-500/15 border border-cyan-500/30">
-                  {order.orderCode}
+              {isOpen && (
+                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
+                  <Clock className="w-3 h-3 animate-spin" />
+                  <span>Đang nhận order</span>
                 </span>
-
-                {isOpen && (
-                  <span className="px-3 py-1 rounded-xl border border-emerald-500/30 bg-emerald-500/15 text-emerald-300 text-xs font-bold inline-flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 animate-spin" />
-                    <span>Đang nhận order</span>
-                  </span>
-                )}
-                {isClosed && (
-                  <span className="px-3 py-1 rounded-xl border border-amber-500/30 bg-amber-500/15 text-amber-300 text-xs font-bold inline-flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Đã đóng order (Chốt giá & Thu tiền)</span>
-                  </span>
-                )}
-                {isCompleted && (
-                  <span className="px-3 py-1 rounded-xl border border-cyan-500/30 bg-cyan-500/15 text-cyan-300 text-xs font-bold inline-flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Đã hoàn tất 100%</span>
-                  </span>
-                )}
-              </div>
-
-              <h2 className="text-xl md:text-2xl font-black text-white">{order.title}</h2>
-
-              {order.description && (
-                <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-                  {order.description}
-                </p>
+              )}
+              {isClosed && (
+                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  <span>Đã đóng order (Chốt giá & Thu tiền)</span>
+                </span>
+              )}
+              {isCompleted && (
+                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Đã hoàn tất 100%</span>
+                </span>
               )}
             </div>
 
-            {/* Quick stats on banner */}
-            <div className="flex items-center gap-3">
-              <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-center min-w-[110px]">
-                <span className="text-[10px] uppercase font-bold text-slate-500 block">Thành viên</span>
-                <span className="text-base font-extrabold text-white">
-                  {order.members.length} người
-                </span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-center min-w-[130px]">
-                <span className="text-[10px] uppercase font-bold text-slate-500 block">Tổng tiền</span>
-                <span className="text-base font-mono font-black text-emerald-400">
-                  {order.totalAmount > 0 ? `${order.totalAmount.toLocaleString("vi-VN")}đ` : "—"}
-                </span>
-              </div>
+            <h2 className="text-lg font-bold text-slate-900">{order.title}</h2>
+
+            {order.description && (
+              <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
+                {order.description}
+              </p>
+            )}
+          </div>
+
+          {/* Quick stats on banner */}
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-center min-w-[110px]">
+              <span className="text-[10px] uppercase font-semibold text-slate-500 block">Thành viên</span>
+              <span className="text-base font-bold text-slate-900">
+                {order.members.length} người
+              </span>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-center min-w-[130px]">
+              <span className="text-[10px] uppercase font-semibold text-slate-500 block">Tổng tiền</span>
+              <span className="text-base font-mono font-bold text-emerald-600">
+                {order.totalAmount > 0 ? `${order.totalAmount.toLocaleString("vi-VN")}đ` : "—"}
+              </span>
             </div>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
           <button
             type="button"
             onClick={() => setActiveTab("items")}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
               activeTab === "items"
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                : "text-slate-400 hover:text-white hover:bg-slate-900"
+                ? "bg-blue-50 text-blue-700 border border-blue-200 shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}
           >
             <UtensilsCrossed className="w-3.5 h-3.5" />
@@ -580,16 +608,16 @@ export default function GroupOrderDetailPage({
           <button
             type="button"
             onClick={() => setActiveTab("payments")}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
               activeTab === "payments"
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                : "text-slate-400 hover:text-white hover:bg-slate-900"
+                ? "bg-blue-50 text-blue-700 border border-blue-200 shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}
           >
             <DollarSign className="w-3.5 h-3.5" />
             <span>Tổng hợp Thanh toán</span>
             {order.summary?.unpaidCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-black">
+              <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 text-[10px] font-semibold">
                 {order.summary.unpaidCount}
               </span>
             )}
@@ -598,10 +626,10 @@ export default function GroupOrderDetailPage({
           <button
             type="button"
             onClick={() => setActiveTab("timeline")}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
               activeTab === "timeline"
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                : "text-slate-400 hover:text-white hover:bg-slate-900"
+                ? "bg-blue-50 text-blue-700 border border-blue-200 shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
@@ -611,11 +639,11 @@ export default function GroupOrderDetailPage({
 
         {/* TAB 1: DANH SÁCH MÓN */}
         {activeTab === "items" && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="space-y-0.5">
-                <h3 className="text-sm font-extrabold text-white">Chi tiết các món đã đăng ký</h3>
-                <p className="text-xs text-slate-400">
+                <h3 className="text-sm font-semibold text-slate-800">Chi tiết các món đã đăng ký</h3>
+                <p className="text-xs text-slate-500">
                   {isOpen
                     ? "Đơn đang mở, mọi người có thể tự vào đăng ký hoặc sửa món của mình."
                     : "Đơn đã đóng. Trưởng nhóm nhập đơn giá thực tế cho từng món bên dưới."}
@@ -627,7 +655,7 @@ export default function GroupOrderDetailPage({
                   <button
                     type="button"
                     onClick={openAddItemModal}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20"
+                    className="px-3.5 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>+ Đăng ký món của tôi</span>
@@ -642,7 +670,7 @@ export default function GroupOrderDetailPage({
                     loadingText="Đang lưu bảng giá..."
                     icon={<Save className="w-3.5 h-3.5" />}
                     variant="primary"
-                    className="px-4 py-2 text-xs font-bold"
+                    className="px-3.5 py-1.5 text-xs font-medium shadow-xs"
                   >
                     Lưu bảng giá thực tế
                   </ActionButton>
@@ -651,41 +679,41 @@ export default function GroupOrderDetailPage({
             </div>
 
             {order.members.length === 0 ? (
-              <div className="p-12 text-center rounded-3xl bg-slate-900/40 border border-slate-800 text-slate-400 text-xs">
+              <div className="p-12 text-center rounded-lg bg-white border border-slate-200 text-slate-500 text-xs shadow-xs">
                 Chưa có ai đăng ký món nào. Hãy là người đầu tiên!
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {order.members.map((member: any) => {
                   const isCurrentMember = member.userId === order.currentUserId;
 
                   return (
                     <div
                       key={member.id}
-                      className="p-5 rounded-3xl bg-slate-900/70 border border-slate-800 space-y-3"
+                      className="p-4 rounded-lg bg-white border border-slate-200 shadow-xs space-y-3"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center font-bold text-xs text-blue-300">
+                          <div className="w-7 h-7 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center font-bold text-xs text-blue-700">
                             {member.user?.fullName?.charAt(0) || "U"}
                           </div>
                           <div>
-                            <span className="font-extrabold text-white text-xs flex items-center gap-1.5">
+                            <span className="font-semibold text-slate-900 text-xs flex items-center gap-1.5">
                               {member.user?.fullName || member.user?.username}
                               {isCurrentMember && (
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
                                   Bạn
                                 </span>
                               )}
                               {member.userId === order.createdById && (
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                  👑 Trưởng nhóm
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 font-semibold">
+                                  Trưởng nhóm
                                 </span>
                               )}
                             </span>
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-[11px] text-slate-500">
                               {member.items.length} món • Tổng:{" "}
-                              <strong className="text-emerald-300 font-mono">
+                              <strong className="text-slate-800 font-mono">
                                 {member.totalAmount > 0
                                   ? `${member.totalAmount.toLocaleString("vi-VN")}đ`
                                   : "Chưa tính giá"}
@@ -698,7 +726,7 @@ export default function GroupOrderDetailPage({
                           <button
                             type="button"
                             onClick={openAddItemModal}
-                            className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-[11px] font-bold inline-flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-md bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-medium inline-flex items-center gap-1 transition-colors"
                           >
                             <Plus className="w-3 h-3" />
                             <span>Thêm món</span>
@@ -708,36 +736,36 @@ export default function GroupOrderDetailPage({
 
                       {/* Items table */}
                       {member.items.length === 0 ? (
-                        <p className="text-slate-500 italic text-xs pl-2">Chưa chọn món nào.</p>
+                        <p className="text-slate-400 italic text-xs pl-2">Chưa chọn món nào.</p>
                       ) : (
-                        <div className="overflow-x-auto rounded-2xl border border-slate-800/80 bg-slate-950/60">
+                        <div className="overflow-x-auto rounded-md border border-slate-200">
                           <table className="w-full text-left text-xs">
-                            <thead className="bg-slate-950 text-slate-500 uppercase text-[10px] font-bold border-b border-slate-800">
+                            <thead className="bg-slate-50 text-slate-600 uppercase text-[11px] font-semibold border-b border-slate-200">
                               <tr>
-                                <th className="px-4 py-2.5">Tên món</th>
-                                <th className="px-4 py-2.5 text-center w-16">SL</th>
-                                <th className="px-4 py-2.5">Ghi chú</th>
-                                <th className="px-4 py-2.5 text-right w-32">Đơn giá</th>
-                                <th className="px-4 py-2.5 text-right w-32">Thành tiền</th>
-                                {isOpen && <th className="px-4 py-2.5 text-right w-20">Thao tác</th>}
+                                <th className="px-3.5 py-2">Tên món</th>
+                                <th className="px-3.5 py-2 text-center w-16">SL</th>
+                                <th className="px-3.5 py-2">Ghi chú</th>
+                                <th className="px-3.5 py-2 text-right w-32">Đơn giá</th>
+                                <th className="px-3.5 py-2 text-right w-32">Thành tiền</th>
+                                {isOpen && <th className="px-3.5 py-2 text-right w-20">Thao tác</th>}
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800/60">
+                            <tbody className="divide-y divide-slate-100">
                               {member.items.map((it: any) => {
                                 const canEdit = isOpen && (isCurrentMember || isLeader);
 
                                 return (
-                                  <tr key={it.id} className="hover:bg-slate-800/30">
-                                    <td className="px-4 py-2.5 font-bold text-white">
+                                  <tr key={it.id} className="hover:bg-slate-50/80">
+                                    <td className="px-3.5 py-2 font-medium text-slate-900">
                                       {it.itemName}
                                     </td>
-                                    <td className="px-4 py-2.5 text-center font-bold text-cyan-300">
+                                    <td className="px-3.5 py-2 text-center font-semibold text-slate-700">
                                       x{it.quantity}
                                     </td>
-                                    <td className="px-4 py-2.5 text-slate-400">
+                                    <td className="px-3.5 py-2 text-slate-500">
                                       {it.note || "—"}
                                     </td>
-                                    <td className="px-4 py-2.5 text-right">
+                                    <td className="px-3.5 py-2 text-right">
                                       {isLeader && isClosed ? (
                                         <input
                                           type="number"
@@ -751,42 +779,42 @@ export default function GroupOrderDetailPage({
                                             })
                                           }
                                           placeholder="0"
-                                          className="w-24 px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono text-right text-xs focus:ring-1 focus:ring-blue-500"
+                                          className="w-24 px-2 py-1 rounded bg-white border border-slate-300 text-slate-900 font-mono text-right text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                         />
                                       ) : it.unitPrice !== null ? (
-                                        <span className="font-mono text-slate-300">
+                                        <span className="font-mono text-slate-700">
                                           {it.unitPrice.toLocaleString("vi-VN")}đ
                                         </span>
                                       ) : (
-                                        <span className="text-slate-500 italic">Chưa có</span>
+                                        <span className="text-slate-400 italic">Chưa có</span>
                                       )}
                                     </td>
-                                    <td className="px-4 py-2.5 text-right font-mono font-bold text-emerald-400">
+                                    <td className="px-3.5 py-2 text-right font-mono font-medium text-emerald-600">
                                       {it.totalAmount !== null
                                         ? `${it.totalAmount.toLocaleString("vi-VN")}đ`
                                         : "—"}
                                     </td>
                                     {isOpen && (
-                                      <td className="px-4 py-2.5 text-right">
+                                      <td className="px-3.5 py-2 text-right">
                                         {canEdit ? (
                                           <div className="flex items-center justify-end gap-1">
                                             <button
                                               type="button"
                                               onClick={() => openEditItemModal(it)}
-                                              className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-blue-300"
+                                              className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700"
                                             >
                                               <Edit2 className="w-3 h-3" />
                                             </button>
                                             <button
                                               type="button"
                                               onClick={() => handleDeleteItem(it.id, it.itemName)}
-                                              className="p-1 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-400"
+                                              className="p-1 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600"
                                             >
                                               <Trash2 className="w-3 h-3" />
                                             </button>
                                           </div>
                                         ) : (
-                                          <span className="text-slate-600">—</span>
+                                          <span className="text-slate-300">—</span>
                                         )}
                                       </td>
                                     )}
@@ -807,50 +835,50 @@ export default function GroupOrderDetailPage({
 
         {/* TAB 2: TỔNG HỢP THANH TOÁN */}
         {activeTab === "payments" && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Financial Overview Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="p-4 rounded-3xl bg-slate-900/80 border border-slate-800">
-                <span className="text-[10px] uppercase font-bold text-slate-500 block">Tổng đơn hàng</span>
-                <span className="text-xl font-mono font-black text-white mt-1 block">
+              <div className="p-4 rounded-lg bg-white border border-slate-200 shadow-xs">
+                <span className="text-[11px] uppercase font-semibold text-slate-500 block">Tổng đơn hàng</span>
+                <span className="text-xl font-mono font-bold text-slate-900 mt-1 block">
                   {order.summary?.totalAmount > 0
                     ? `${order.summary.totalAmount.toLocaleString("vi-VN")}đ`
                     : "Chưa chốt giá"}
                 </span>
               </div>
 
-              <div className="p-4 rounded-3xl bg-slate-900/80 border border-emerald-500/30 bg-emerald-500/5">
-                <span className="text-[10px] uppercase font-bold text-emerald-400 block">Đã thu tiền (🟢)</span>
-                <span className="text-xl font-mono font-black text-emerald-300 mt-1 block">
+              <div className="p-4 rounded-lg bg-white border border-emerald-200 shadow-xs">
+                <span className="text-[11px] uppercase font-semibold text-emerald-700 block">Đã thu tiền</span>
+                <span className="text-xl font-mono font-bold text-emerald-600 mt-1 block">
                   {order.summary?.totalCollected?.toLocaleString("vi-VN")}đ
                 </span>
-                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                <span className="text-[11px] text-slate-500 mt-0.5 block">
                   {order.summary?.paidMembersCount} / {order.summary?.totalMembers} người đã trả
                 </span>
               </div>
 
-              <div className="p-4 rounded-3xl bg-slate-900/80 border border-rose-500/30 bg-rose-500/5">
-                <span className="text-[10px] uppercase font-bold text-rose-400 block">Còn cần thu (🔴)</span>
-                <span className="text-xl font-mono font-black text-rose-300 mt-1 block">
+              <div className="p-4 rounded-lg bg-white border border-rose-200 shadow-xs">
+                <span className="text-[11px] uppercase font-semibold text-rose-700 block">Còn cần thu</span>
+                <span className="text-xl font-mono font-bold text-rose-600 mt-1 block">
                   {order.summary?.totalUnpaid?.toLocaleString("vi-VN")}đ
                 </span>
-                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                <span className="text-[11px] text-slate-500 mt-0.5 block">
                   Còn {order.summary?.unpaidCount} người chưa thanh toán
                 </span>
               </div>
 
-              <div className="p-4 rounded-3xl bg-slate-900/80 border border-slate-800 flex flex-col justify-center">
+              <div className="p-4 rounded-lg bg-white border border-slate-200 shadow-xs flex flex-col justify-center">
                 {isLeader ? (
                   <button
                     type="button"
                     onClick={() => setReminderModalOpen(true)}
-                    className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-500/25 transition-all"
+                    className="w-full py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>Nhắc thanh toán Telegram</span>
                   </button>
                 ) : (
-                  <div className="text-center text-xs text-slate-400">
+                  <div className="text-center text-xs text-slate-500">
                     <span>Trưởng nhóm sẽ xác nhận sau khi nhận được tiền.</span>
                   </div>
                 )}
@@ -858,64 +886,64 @@ export default function GroupOrderDetailPage({
             </div>
 
             {/* Members Payment Table */}
-            <div className="overflow-x-auto rounded-3xl border border-slate-800 bg-slate-900/70 shadow-2xl">
+            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-xs">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] font-bold tracking-wider border-b border-slate-800">
+                <thead className="bg-slate-50 text-slate-600 uppercase text-[11px] font-semibold tracking-wider border-b border-slate-200">
                   <tr>
-                    <th className="px-5 py-3.5">Thành viên</th>
-                    <th className="px-5 py-3.5 text-center">Số món</th>
-                    <th className="px-5 py-3.5 text-right">Phải trả</th>
-                    <th className="px-5 py-3.5 text-center">Trạng thái thanh toán</th>
-                    {isLeader && <th className="px-5 py-3.5 text-right">Thao tác Trưởng nhóm</th>}
+                    <th className="px-4 py-2.5">Thành viên</th>
+                    <th className="px-4 py-2.5 text-center">Số món</th>
+                    <th className="px-4 py-2.5 text-right">Phải trả</th>
+                    <th className="px-4 py-2.5 text-center">Trạng thái thanh toán</th>
+                    {isLeader && <th className="px-4 py-2.5 text-right">Thao tác Trưởng nhóm</th>}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-slate-100">
                   {order.members.map((m: any) => {
                     const isPaid = m.paymentStatus === "paid";
 
                     return (
-                      <tr key={m.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="px-5 py-3.5 font-bold text-white flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-xs">
+                      <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 py-2.5 font-medium text-slate-900 flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[11px] font-bold text-slate-700">
                             {m.user?.fullName?.charAt(0) || "U"}
                           </div>
                           <div>
                             <span>{m.user?.fullName || m.user?.username}</span>
                             {m.userId === order.createdById && (
-                              <span className="text-[10px] text-amber-400 ml-1.5 font-normal">
+                              <span className="text-[10px] text-amber-700 ml-1.5 font-semibold">
                                 (Trưởng nhóm)
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 text-center font-medium text-slate-300">
+                        <td className="px-4 py-2.5 text-center text-slate-600">
                           {m.totalItemsCount} món
                         </td>
-                        <td className="px-5 py-3.5 text-right font-mono font-extrabold text-sm text-cyan-300">
+                        <td className="px-4 py-2.5 text-right font-mono font-bold text-xs text-slate-900">
                           {m.totalAmount > 0 ? `${m.totalAmount.toLocaleString("vi-VN")}đ` : "—"}
                         </td>
-                        <td className="px-5 py-3.5 text-center">
+                        <td className="px-4 py-2.5 text-center">
                           {isPaid ? (
-                            <span className="px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold inline-flex items-center gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-medium inline-flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
                               <span>Đã thanh toán</span>
                             </span>
                           ) : (
-                            <span className="px-3 py-1 rounded-xl bg-rose-500/15 text-rose-300 border border-rose-500/30 text-[11px] font-bold inline-flex items-center gap-1">
-                              <AlertTriangle className="w-3.5 h-3.5" />
+                            <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-medium inline-flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
                               <span>Chưa thanh toán</span>
                             </span>
                           )}
                         </td>
                         {isLeader && (
-                          <td className="px-5 py-3.5 text-right">
+                          <td className="px-4 py-2.5 text-right">
                             <button
                               type="button"
                               onClick={() => handleToggleMemberPaid(m.userId, m.paymentStatus)}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                                 isPaid
-                                  ? "bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
-                                  : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20"
+                                  ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300"
+                                  : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                               }`}
                             >
                               {isPaid ? "Hủy xác nhận" : "Xác nhận đã nhận"}
@@ -933,7 +961,7 @@ export default function GroupOrderDetailPage({
 
         {/* TAB 3: TIMELINE LỊCH SỬ ĐƠN */}
         {activeTab === "timeline" && (
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800">
+          <div className="p-5 rounded-lg bg-white border border-slate-200 shadow-xs">
             <GroupOrderActivityTimeline activities={order.activities} />
           </div>
         )}
@@ -948,9 +976,9 @@ export default function GroupOrderDetailPage({
         maxWidth="max-w-md"
       >
         <form onSubmit={handleSaveItem} className="space-y-4 text-xs">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Tên món ăn / thức uống <span className="text-rose-400">*</span>
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
+              Tên món ăn / thức uống <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -958,19 +986,19 @@ export default function GroupOrderDetailPage({
               value={itemName}
               onChange={(e) => setItemName(e.target.value)}
               placeholder="VD: Trà đào cam sả, Cà phê sữa, Cơm gà xối mỡ..."
-              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-1.5 rounded-md bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Số lượng <span className="text-rose-400">*</span>
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
+              Số lượng <span className="text-rose-500">*</span>
             </label>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
-                className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 text-white text-base font-bold hover:bg-slate-800"
+                className="w-8 h-8 rounded-md bg-slate-100 border border-slate-300 text-slate-700 font-bold hover:bg-slate-200 transition-colors"
               >
                 -
               </button>
@@ -979,20 +1007,20 @@ export default function GroupOrderDetailPage({
                 min={1}
                 value={itemQuantity}
                 onChange={(e) => setItemQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="w-20 px-3 py-2 text-center rounded-xl bg-slate-950 border border-slate-700 text-white text-sm font-bold"
+                className="w-16 px-2 py-1 text-center rounded-md bg-white border border-slate-300 text-slate-900 text-xs font-semibold"
               />
               <button
                 type="button"
                 onClick={() => setItemQuantity(itemQuantity + 1)}
-                className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 text-white text-base font-bold hover:bg-slate-800"
+                className="w-8 h-8 rounded-md bg-slate-100 border border-slate-300 text-slate-700 font-bold hover:bg-slate-200 transition-colors"
               >
                 +
               </button>
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
               Ghi chú món (Ít đường, Không đá, Cay...)
             </label>
             <input
@@ -1000,15 +1028,15 @@ export default function GroupOrderDetailPage({
               value={itemNote}
               onChange={(e) => setItemNote(e.target.value)}
               placeholder="VD: 50% đường, nhiều đá, trân châu đen..."
-              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-700 text-white text-xs"
+              className="w-full px-3 py-1.5 rounded-md bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
             <button
               type="button"
               onClick={() => setItemModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800"
+              className="px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
             >
               Hủy
             </button>
@@ -1017,7 +1045,7 @@ export default function GroupOrderDetailPage({
               variant="primary"
               isLoading={savingItem}
               loadingText="Đang lưu..."
-              className="px-6 py-2 text-xs font-bold"
+              className="px-4 py-1.5 text-xs font-medium"
             >
               {editingItem ? "Lưu thay đổi" : "Thêm vào order"}
             </ActionButton>
@@ -1034,30 +1062,46 @@ export default function GroupOrderDetailPage({
         maxWidth="max-w-xl"
       >
         <form onSubmit={handleSendReminder} className="space-y-4 text-xs">
-          <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+          <div className="p-3 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
             <div>
-              <span className="text-slate-400 block">Số người chưa thanh toán:</span>
-              <span className="text-base font-extrabold text-rose-400">
+              <span className="text-slate-500 block">Số người chưa thanh toán:</span>
+              <span className="text-sm font-bold text-rose-600">
                 {order.summary?.unpaidCount} thành viên
               </span>
             </div>
             <div className="text-right">
-              <span className="text-slate-400 block">Tổng tiền còn thiếu:</span>
-              <span className="text-base font-mono font-black text-amber-300">
+              <span className="text-slate-500 block">Tổng tiền còn thiếu:</span>
+              <span className="text-sm font-mono font-bold text-amber-700">
                 {order.summary?.totalUnpaid?.toLocaleString("vi-VN")}đ
               </span>
             </div>
           </div>
 
+          {/* Auto-fill indicator */}
+          <div className="p-3 rounded-md bg-blue-50 border border-blue-200 text-xs flex items-start gap-2 leading-relaxed">
+            <CreditCard className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+            <div>
+              {order.leaderPaymentConfig ? (
+                <span className="text-blue-900">
+                  Hệ thống đã <strong>tự động điền</strong> thông tin ngân hàng của <strong>{order.createdByUser?.fullName || "trưởng nhóm"}</strong>. Vui lòng kiểm tra lại trước khi gửi.
+                </span>
+              ) : (
+                <span className="text-amber-800">
+                  Trưởng nhóm chưa cấu hình tài khoản ngân hàng mặc định. Vui lòng nhập thông tin nhận tiền bên dưới.
+                </span>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1 sm:col-span-2">
-              <label className="text-[11px] font-bold text-slate-300 uppercase">
-                Ngân hàng thụ hưởng <span className="text-rose-400">*</span>
+              <label className="text-[11px] font-semibold text-slate-700 uppercase">
+                Ngân hàng thụ hưởng <span className="text-rose-500">*</span>
               </label>
               <select
                 value={remBankCode}
                 onChange={(e) => setRemBankCode(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs"
+                className="w-full px-2.5 py-1.5 rounded-md bg-white border border-slate-300 text-slate-700 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 {VIETNAM_BANKS.map((b) => (
                   <option key={b.code} value={b.code}>
@@ -1068,77 +1112,90 @@ export default function GroupOrderDetailPage({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-300 uppercase">
-                Số tài khoản <span className="text-rose-400">*</span>
+              <label className="text-[11px] font-semibold text-slate-700 uppercase">
+                Số tài khoản <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={remAccountNumber}
                 onChange={(e) => setRemAccountNumber(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-xs"
+                className="w-full px-3 py-1.5 rounded-md bg-white border border-slate-300 text-slate-900 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-300 uppercase">
-                Tên chủ tài khoản <span className="text-rose-400">*</span>
+              <label className="text-[11px] font-semibold text-slate-700 uppercase">
+                Tên chủ tài khoản <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={remAccountName}
                 onChange={(e) => setRemAccountName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white uppercase font-mono text-xs"
+                className="w-full px-3 py-1.5 rounded-md bg-white border border-slate-300 text-slate-900 uppercase font-mono text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
 
             <div className="space-y-1 sm:col-span-2">
-              <label className="text-[11px] font-bold text-slate-300 uppercase">
+              <label className="text-[11px] font-semibold text-slate-700 uppercase">
+                Chi nhánh ngân hàng (Tùy chọn)
+              </label>
+              <input
+                type="text"
+                value={remBranch}
+                onChange={(e) => setRemBranch(e.target.value)}
+                placeholder="VD: Chi nhánh Ba Đình, TP.HCM..."
+                className="w-full px-3 py-1.5 rounded-md bg-white border border-slate-300 text-slate-900 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-[11px] font-semibold text-slate-700 uppercase">
                 Nội dung chuyển khoản (Không khóa số tiền)
               </label>
               <input
                 type="text"
                 value={remContent}
                 onChange={(e) => setRemContent(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs font-mono"
+                className="w-full px-3 py-1.5 rounded-md bg-white border border-slate-300 text-slate-900 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
           </div>
 
           {/* QR Preview */}
           {previewQrUrl && (
-            <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-2">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">
+            <div className="p-3 rounded-md bg-slate-50 border border-slate-200 text-center space-y-2">
+              <span className="text-[11px] uppercase font-semibold text-slate-600 block">
                 Xem trước mã QR VietQR (Napas 247)
               </span>
               <img
                 src={previewQrUrl}
                 alt="QR VietQR"
-                className="w-48 h-48 mx-auto rounded-xl border border-slate-700 shadow-md object-contain bg-white p-1"
+                className="w-44 h-44 mx-auto rounded border border-slate-300 shadow-xs object-contain bg-white p-1"
               />
             </div>
           )}
 
           {/* Option gửi Telegram */}
-          <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center gap-2.5">
+          <div className="p-3 rounded-md bg-blue-50 border border-blue-200 flex items-center gap-2">
             <input
               type="checkbox"
               id="sendTelegramCheck"
               checked={remSendTelegram}
               onChange={(e) => setRemSendTelegram(e.target.checked)}
-              className="w-4 h-4 rounded text-cyan-500 bg-slate-900 border-slate-700"
+              className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500"
             />
-            <label htmlFor="sendTelegramCheck" className="text-xs text-cyan-200 cursor-pointer font-medium">
+            <label htmlFor="sendTelegramCheck" className="text-xs text-blue-900 cursor-pointer font-medium">
               Gửi thông báo và ảnh QR tới nhóm Telegram qua Telegram Bot
             </label>
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
             <button
               type="button"
               onClick={() => setReminderModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800"
+              className="px-3.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
             >
               Hủy
             </button>
@@ -1148,7 +1205,7 @@ export default function GroupOrderDetailPage({
               isLoading={sendingReminder}
               loadingText="Đang gửi thông báo..."
               icon={<Send className="w-3.5 h-3.5" />}
-              className="px-6 py-2 text-xs font-bold bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 shadow-cyan-500/25"
+              className="px-4 py-1.5 text-xs font-medium"
             >
               Gửi thông báo
             </ActionButton>
@@ -1165,48 +1222,48 @@ export default function GroupOrderDetailPage({
         maxWidth="max-w-md"
       >
         <form onSubmit={handleSaveOrderInfo} className="space-y-4 text-xs">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Tên đơn đặt nhóm <span className="text-rose-400">*</span>
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
+              Tên đơn đặt nhóm <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               required
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-700 text-white text-sm"
+              className="w-full px-3 py-1.5 rounded-md bg-white border border-slate-300 text-slate-900 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
               Ghi chú thêm
             </label>
             <textarea
               rows={3}
               value={editDesc}
               onChange={(e) => setEditDesc(e.target.value)}
-              className="w-full px-4 py-2 rounded-2xl bg-slate-950 border border-slate-700 text-white text-xs"
+              className="w-full px-3 py-1.5 rounded-md bg-white border border-slate-300 text-slate-900 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
               Thời hạn chốt order
             </label>
             <input
               type="datetime-local"
               value={editDeadline}
               onChange={(e) => setEditDeadline(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-700 text-white text-sm"
+              className="w-full px-3 py-1.5 rounded-md bg-white border border-slate-300 text-slate-900 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
             <button
               type="button"
               onClick={() => setEditOrderModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800"
+              className="px-3.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"
             >
               Hủy
             </button>
@@ -1215,7 +1272,7 @@ export default function GroupOrderDetailPage({
               variant="primary"
               isLoading={savingOrder}
               loadingText="Đang lưu..."
-              className="px-6 py-2 text-xs font-bold"
+              className="px-4 py-1.5 text-xs font-medium"
             >
               Lưu thay đổi
             </ActionButton>

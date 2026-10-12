@@ -33,30 +33,35 @@ export function Modal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-      {/* Backdrop with Blur */}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-dialog-title"
+    >
+      {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300"
+        className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-xs transition-opacity duration-150"
         onClick={onClose}
+        aria-hidden="true"
       />
 
       {/* Modal Dialog Card */}
       <div
-        className={`relative w-full ${maxWidth} bg-[#0c1222]/95 border border-slate-700/80 rounded-3xl shadow-2xl shadow-black/80 p-6 md:p-7 overflow-hidden z-10 animate-modal text-slate-100 ring-1 ring-white/10`}
+        className={`relative w-full ${maxWidth} bg-white border border-[#DDE2E9] rounded-lg shadow-xl p-5 md:p-6 z-10 animate-modal-enter text-[#172033]`}
       >
-        {/* Decorative Top Accent Glow */}
-        <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-blue-500 to-transparent pointer-events-none" />
-
         {/* Modal Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-slate-800/80 mb-5">
-          <div className="space-y-1 pr-4">
-            <h3 className="text-lg md:text-xl font-bold text-white tracking-tight">{title}</h3>
-            {subtitle && <p className="text-xs text-slate-400 font-medium leading-relaxed">{subtitle}</p>}
+        <div className="flex items-start justify-between pb-3.5 border-b border-[#DDE2E9] mb-4">
+          <div className="space-y-0.5 pr-4">
+            <h3 id="modal-dialog-title" className="text-base font-bold text-[#172033] tracking-tight">{title}</h3>
+            {subtitle && <p className="text-xs text-[#64748B] font-normal leading-relaxed">{subtitle}</p>}
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all shrink-0 ring-1 ring-transparent hover:ring-slate-700"
-            title="Đóng cửa sổ"
+            className="p-1.5 rounded-md text-[#64748B] hover:text-[#172033] hover:bg-[#F1F3F6] transition-colors shrink-0"
+            title="Đóng (Esc)"
+            aria-label="Đóng cửa sổ"
           >
             <X className="w-4 h-4" />
           </button>

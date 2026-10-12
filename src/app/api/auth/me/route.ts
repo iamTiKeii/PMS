@@ -48,12 +48,39 @@ export async function GET() {
       tierLevel: pa.tierLevel,
     })) || [];
 
+    let roles: { id: string; code: string; name: string; description: string | null }[] = [];
+    try {
+      const userRoles = await prisma.userRole.findMany({
+        where: { userId: user.id },
+        include: { role: true },
+      });
+      roles = userRoles.map((ur) => ({
+        id: ur.role.id,
+        code: ur.role.code,
+        name: ur.role.name,
+        description: ur.role.description,
+      }));
+    } catch (err) {
+      console.warn("Could not query userRoles in /api/auth/me:", err);
+    }
+
+    const primaryRoleName =
+      roles.length > 0
+        ? roles[0].name
+        : user.role === "admin"
+        ? "Quản trị viên (ADMIN)"
+        : user.role === "pm"
+        ? "Quản lý dự án (PM)"
+        : "Nhân viên dự án";
+
     return NextResponse.json({
       success: true,
       data: {
         userId: user.id,
         username: user.username,
         role: user.role,
+        roleName: primaryRoleName,
+        roles,
         status: user.status,
         mustChangePassword: user.mustChangePassword,
         staff: user.staff

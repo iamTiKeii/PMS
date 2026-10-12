@@ -62,6 +62,7 @@ export async function POST(
       bankCode,
       accountNumber,
       accountName,
+      branch,
       customContent,
       sendTelegram = false,
     } = body;
@@ -144,13 +145,24 @@ export async function POST(
       }
     }
 
-    // BR-GO-14: Lưu một bản ghi Payment Reminder riêng
+    // BR-GO-14: Lưu một bản ghi Payment Reminder riêng kèm snapshot ngân hàng tại thời điểm gửi
     const reminder = await prisma.groupOrderPaymentReminder.create({
       data: {
         groupOrderId: id,
         createdById: session.userId,
         content,
-        bankInfo: JSON.stringify({ bankCode, accountNumber, accountName }),
+        bankInfo: JSON.stringify({
+          bankCode: bankCode.trim(),
+          accountNumber: accountNumber.trim(),
+          accountName: accountName.trim(),
+          branch: branch ? String(branch).trim() : null,
+          snapshotAt: new Date().toISOString(),
+        }),
+        paymentBankCode: bankCode.trim(),
+        paymentAccountNumber: accountNumber.trim(),
+        paymentAccountHolderName: accountName.trim(),
+        paymentBranch: branch ? String(branch).trim() : null,
+        paymentProfileSnapshotAt: new Date(),
         qrDataUrl: qrImageUrl,
         unpaidCount: unpaidMembers.length,
         unpaidAmount,

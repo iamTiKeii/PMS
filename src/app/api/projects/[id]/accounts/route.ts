@@ -67,8 +67,15 @@ export async function GET(
     });
 
     const data = accounts.map((acc) => {
+      const isOwner =
+        acc.ownerUserId === session.userId ||
+        (session.staffId && acc.staffId === session.staffId);
+
+      const status = acc.passwordStatus || "DEFAULT";
+
       let plaintextPassword: string | null = null;
-      if (isProjectMember) {
+      // TRẠNG THÁI 1: Mật khẩu mặc định của dự án -> Cho phép thành viên dự án hoặc chủ sở hữu xem không cần PIN
+      if (status === "DEFAULT" && (isProjectMember || isOwner)) {
         try {
           plaintextPassword = decryptSitePassword({
             ciphertext: acc.sitePasswordEncrypted,
@@ -79,19 +86,24 @@ export async function GET(
           plaintextPassword = null;
         }
       }
+      // TRẠNG THÁI 2: Mật khẩu đã đổi (CUSTOM) -> Không bao giờ trả ở API danh sách, bắt buộc xác thực PIN qua popup
 
-      const tierLevel = staffLevelMap.get(acc.staffId) || null;
+      const tierLevel = acc.staffId ? staffLevelMap.get(acc.staffId) || null : null;
 
       return {
         id: acc.id,
         projectId: acc.projectId,
         staffId: acc.staffId,
         staff: acc.staff,
+        ownerUserId: acc.ownerUserId,
+        isOwner: Boolean(isOwner),
         tierLevel,
         accountLabel: acc.accountLabel,
         siteLoginUsername: acc.siteLoginUsername,
         maskedPassword: "••••••••••••",
         password: plaintextPassword,
+        passwordStatus: status,
+        passwordChangedAt: acc.passwordChangedAt,
         status: acc.status,
         notes: acc.notes,
         lastRotatedAt: acc.lastRotatedAt,
@@ -119,13 +131,13 @@ export async function GET(
   }
 }
 
-// POST /api/projects/[id]/accounts - UC-33: Add account to project (Admin)
+// POST /api/projects/[id]/accounts - UC-33: Add account to project
 export async function POST(
   request: Request,
   props: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await requireRole(["admin", "pm"]);
+    const session = await requireAuth();
     const { id: projectId } = await props.params;
     const body = await request.json();
     const {
@@ -202,9 +214,10 @@ export async function POST(
       );
     }
 
-    // Verify staff exists and active
+    // Verify staff exists and active (include linked user for ownership)
     const staff = await prisma.staff.findUnique({
       where: { id: staffId },
+      include: { user: { select: { id: true } } },
     });
     if (!staff || staff.deletedAt) {
       return NextResponse.json(
@@ -218,15 +231,27 @@ export async function POST(
 
     const label = accountLabel?.trim() || `${staff.fullName} - ${trimmedUsername}`;
 
+    // Determine password status: DEFAULT if matching project default password, else CUSTOM
+    const isDefaultPassword = !sitePassword?.trim() || sitePassword.trim() === project.defaultPassword;
+    const passwordStatus = isDefaultPassword ? "DEFAULT" : "CUSTOM";
+    const passwordChangedAt = isDefaultPassword ? null : new Date();
+
+    // Owner is linked user of the staff member, fallback to current user
+    const ownerUserId = staff.user?.id || session.userId;
+
     const newAccount = await prisma.staffAccount.create({
       data: {
         projectId,
         staffId,
+        ownerUserId,
+        createdById: session.userId,
         accountLabel: label,
         siteLoginUsername: trimmedUsername,
         sitePasswordEncrypted: encrypted.ciphertext,
         encryptionIv: encrypted.iv,
         encryptionAuthTag: encrypted.authTag,
+        passwordStatus,
+        passwordChangedAt,
         status: "in_use",
         notes: notes?.trim() || null,
         lastRotatedAt: new Date(),

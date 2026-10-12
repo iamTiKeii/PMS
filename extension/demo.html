@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ISOFH Support Extension — Live UI Demo</title>
+  <link rel="stylesheet" href="popup.css">
+  <style>
+    /* Demo Viewer Wrapper */
+    body {
+      background: radial-gradient(circle at 50% 10%, #1e293b, #0f172a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      width: 100vw;
+    }
+    .demo-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .demo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #93c5fd;
+      font-size: 12px;
+      font-weight: 600;
+      backdrop-filter: blur(8px);
+    }
+    .extension-container {
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="demo-wrapper">
+    <div class="demo-badge">
+      <span>✨ ISOFH Extension UI Demo — 400px Sidebar Simulation (shadcn/ui style)</span>
+    </div>
+
+    <!-- Container Extension (400px x 600px chuẩn Sidebar / Popup) -->
+    <div class="extension-container">
+      
+      <!-- ==================================================================== -->
+      <!-- MÀN HÌNH 1: LOGIN                                                    -->
+      <!-- ==================================================================== -->
+      <div id="view-login" class="view-panel flex flex-col h-full login-wrapper">
+        <div class="login-brand-box">
+          <div class="brand-emblem">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+              <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+              <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+            </svg>
+          </div>
+          <h1 class="brand-title">ISOFH Hub</h1>
+          <p class="brand-subtitle">Tiện ích ghi nhận ca hỗ trợ kỹ thuật trực ca</p>
+        </div>
+
+        <div class="card-login">
+          <form id="form-login" class="space-y-3" onsubmit="event.preventDefault(); switchView('view-dashboard');">
+            <div class="form-field">
+              <label class="field-label">Máy chủ Hub (Host URL)</label>
+              <div class="input-icon-group">
+                <span class="input-icon-prefix">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                  </svg>
+                </span>
+                <input type="text" id="login-server" value="http://localhost:3000" class="field-input field-input-icon">
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="field-label">Tài khoản nhân sự</label>
+              <div class="input-icon-group">
+                <span class="input-icon-prefix">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </span>
+                <input type="text" id="login-username" value="admin" class="field-input field-input-icon" required>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="field-label">Mật khẩu xác thực</label>
+              <div class="input-icon-group">
+                <span class="input-icon-prefix">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </span>
+                <input type="password" id="login-password" value="" placeholder="Mật khẩu" class="field-input field-input-icon" required>
+              </div>
+            </div>
+
+            <button type="submit" id="btn-login" class="btn btn-primary w-full mt-1">
+              <span>Đăng nhập hệ thống</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </button>
+          </form>
+        </div>
+
+        <div class="text-center mt-4">
+          <span class="text-[11px] text-slate-400">Phiên bản 1.0 · Bảo mật PMS Token</span>
+        </div>
+      </div>
+
+      <!-- ==================================================================== -->
+      <!-- MÀN HÌNH 2: DASHBOARD (Chọn dự án & Ngày)                            -->
+      <!-- ==================================================================== -->
+      <div id="view-dashboard" class="view-panel hidden flex-col h-full bg-slate-50">
+        <!-- Header Bar Top -->
+        <header class="header-bar">
+          <div class="user-badge">
+            <div id="user-avatar" class="avatar-circle">K</div>
+            <div>
+              <div class="text-xs font-bold leading-tight" id="logged-in-user">Trung Kiên</div>
+              <div class="text-[10px] text-slate-300 font-medium">Hỗ trợ kỹ thuật</div>
+            </div>
+          </div>
+
+          <div class="header-actions">
+            <button id="btn-sync-hub" title="Đồng bộ danh mục từ Hub" class="icon-btn" onclick="alert('Đã đồng bộ danh mục!');">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+              </svg>
+            </button>
+            <button id="btn-logout" title="Đăng xuất" class="icon-btn" onclick="switchView('view-login')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Main Body -->
+        <div class="flex-1 p-3.5 flex flex-col justify-between overflow-y-auto space-y-3">
+          <div class="space-y-3">
+            
+            <!-- Card Lựa chọn phạm vi -->
+            <div class="card-section space-y-2.5">
+              <div class="form-field">
+                <label class="field-label">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline mr-1 text-blue-600">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  Dự án triển khai
+                </label>
+                <select id="select-project" class="field-select">
+                  <option>Bệnh viện 198 (Bộ Công An)</option>
+                  <option>Bệnh viện Đại học Y Hà Nội</option>
+                  <option>Bệnh viện Phổi Trung Ương</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label class="field-label">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline mr-1 text-blue-600">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                  Ngày trực
+                </label>
+                <input type="date" id="current-date" class="field-input">
+              </div>
+            </div>
+
+            <!-- Danh sách ca đã ghi nhận trong ngày -->
+            <div class="card-section p-3">
+              <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-100">
+                <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Ca hỗ trợ trong ngày</span>
+                <span id="badge-total-tickets" class="pill-badge pill-blue">2 ca</span>
+              </div>
+              <div id="dashboard-tickets-list" class="tickets-scroll-area space-y-1.5">
+                <div class="ticket-item is-done">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="font-mono font-bold" style="color: #2563eb; font-size: 11.5px;">HT-00001</span>
+                    <span style="font-size: 10px; font-weight: 700; color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 1.5px 6px; border-radius: 9999px;">✓ Xong</span>
+                  </div>
+                  <div class="font-semibold truncate mb-0.5" style="color: #1e293b; font-size: 12px;">BS. Nguyễn Văn A - Khoa Cấp Cứu</div>
+                  <div class="truncate mb-1.5" style="color: #64748b; font-size: 11px;">Lỗi in form phiếu chỉ định dịch vụ CLS</div>
+                  <div class="flex items-center justify-between pt-1.5" style="border-top: 1px solid #f1f5f9; font-size: 10.5px; color: #94a3b8;">
+                    <span style="font-weight: 500;">⏱️ Xử lý: <strong style="color: #334155;">13 phút</strong></span>
+                    <span class="link-bold" style="font-size: 11px;">Hub ↗</span>
+                  </div>
+                </div>
+
+                <div class="ticket-item is-pending">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="font-mono font-bold" style="color: #2563eb; font-size: 11.5px;">HT-00002</span>
+                    <span style="font-size: 10px; font-weight: 700; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; padding: 1.5px 6px; border-radius: 9999px;">⏳ Đang làm</span>
+                  </div>
+                  <div class="font-semibold truncate mb-0.5" style="color: #1e293b; font-size: 12px;">Dược sĩ Trần Thị B - Nhà Thuốc</div>
+                  <div class="truncate mb-1.5" style="color: #64748b; font-size: 11px;">Cần hỗ trợ kiểm tra kết nối cổng BHXH</div>
+                  <div class="flex items-center justify-between pt-1.5" style="border-top: 1px solid #f1f5f9; font-size: 10.5px; color: #94a3b8;">
+                    <span style="font-weight: 500;">⏱️ Tiếp nhận: 10 phút trước</span>
+                    <span class="link-bold" style="font-size: 11px;">Hub ↗</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Big CTA: Tạo ca hỗ trợ mới -->
+          <button onclick="switchView('view-form')" class="btn btn-primary btn-cta w-full">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Tạo ca hỗ trợ mới (New Ticket)
+          </button>
+        </div>
+      </div>
+
+      <!-- ==================================================================== -->
+      <!-- MÀN HÌNH 3: TẠO TICKET MỚI                                           -->
+      <!-- ==================================================================== -->
+      <div id="view-form" class="view-panel hidden flex-col h-full bg-white">
+        <!-- Sticky Header -->
+        <div class="form-header">
+          <div class="flex items-center gap-2">
+            <button onclick="switchView('view-dashboard')" class="back-btn" title="Quay lại Dashboard">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+            </button>
+            <div>
+              <h2 class="text-xs font-bold text-slate-900 leading-tight">Ghi nhận hỗ trợ mới</h2>
+              <span class="text-[10px] text-slate-400">Đồng bộ trực tiếp về PMS Hub</span>
+            </div>
+          </div>
+
+          <button type="button" class="btn-reset-link" onclick="if(confirm('Làm mới biểu mẫu?')) document.querySelectorAll('#view-form input, #view-form textarea').forEach(i => i.value = '');">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+              <path d="M21 3v5h-5"></path>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+              <path d="M3 21v-5h5"></path>
+            </svg>
+            Làm mới
+          </button>
+        </div>
+
+        <!-- Thanh chỉ báo nháp -->
+        <div class="draft-indicator-bar">
+          <div class="flex items-center">
+            <span class="draft-dot dot-saved"></span>
+            <span class="draft-text">Đã lưu nháp tự động</span>
+          </div>
+          <span class="draft-time">Vừa xong</span>
+        </div>
+
+        <!-- Scrollable Form Content -->
+        <div class="flex-1 overflow-y-auto form-scroll space-y-3">
+          
+          <!-- Cụm 1: Người dùng yêu cầu & Nhân sự -->
+          <div class="form-section-card space-y-2.5">
+            <div class="grid grid-cols-2 gap-2.5">
+              <div class="form-field">
+                <label class="field-label">Người dùng yêu cầu <span class="req">*</span></label>
+                <input type="text" id="input-requester" placeholder="Tên / SĐT User" class="field-input" required>
+              </div>
+              <div class="form-field">
+                <div class="flex items-center justify-between mb-1">
+                  <label class="field-label mb-0">Nhân sự phụ trách</label>
+                  <span class="text-[9px] text-blue-600 font-semibold">Có quyền đổi</span>
+                </div>
+                <select id="select-assigned-user" class="field-select">
+                  <option selected>Trung Kiên (@admin)</option>
+                  <option>Nguyễn Văn Hoàng (@hoangnv)</option>
+                  <option>Lê Thị Mai (@mailt)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cụm 2: Nghiệp vụ & Phương thức -->
+          <div class="form-section-card space-y-2.5">
+            <div class="form-field">
+              <label class="field-label">Nghiệp vụ tiếp nhận <span class="req">*</span></label>
+              <select id="select-business" class="field-select">
+                <option>Tiếp đón</option><option>Khám bệnh</option><option>Thu Ngân</option>
+                <option>QMS</option><option>Gói dịch vụ</option><option>Nội trú</option>
+                <option>Nhà thuốc</option><option>Form phiếu</option><option>Truy xuất dữ liệu</option>
+                <option>Điều trị dài hạn</option><option>Thiết lập</option><option>Kho</option>
+                <option>Báo cáo</option><option>Isofhtool</option><option>Dịch vụ CLS</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="field-label mb-0">Phương thức hỗ trợ <span class="req">*</span></label>
+                <span class="text-[10px] text-slate-400">Chọn 1 hoặc nhiều tag</span>
+              </div>
+              <div id="method-tags-container" class="flex flex-wrap gap-1.5 pt-0.5">
+                <button type="button" class="method-tag-pill active" onclick="this.classList.toggle('active')">
+                  <span class="tag-check">✓</span> Zalo
+                </button>
+                <button type="button" class="method-tag-pill" onclick="this.classList.toggle('active')">
+                  <span class="tag-check">✓</span> Hotline
+                </button>
+                <button type="button" class="method-tag-pill" onclick="this.classList.toggle('active')">
+                  <span class="tag-check">✓</span> WhatsApp
+                </button>
+                <button type="button" class="method-tag-pill" onclick="this.classList.toggle('active')">
+                  <span class="tag-check">✓</span> Viber
+                </button>
+                <button type="button" class="method-tag-pill" onclick="this.classList.toggle('active')">
+                  <span class="tag-check">✓</span> Trực tiếp
+                </button>
+                <button type="button" class="method-tag-pill" onclick="this.classList.toggle('active')">
+                  <span class="tag-check">✓</span> Khác
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cụm 3: Mô tả vấn đề & Phân loại -->
+          <div class="form-section-card space-y-2.5">
+            <div class="form-field">
+              <label class="field-label">Mô tả vấn đề <span class="req">*</span></label>
+              <textarea id="input-description" rows="2" class="field-textarea" placeholder="Nội dung người dùng phản ánh, mô tả lỗi..." required></textarea>
+            </div>
+
+            <div class="form-field">
+              <label class="field-label">Phân loại hỗ trợ khai báo</label>
+              <select id="select-support-type" class="field-select">
+                <option>Hướng dẫn sử dụng</option>
+                <option>So sánh & kiểm tra báo cáo chuyên môn</option>
+                <option>Lấy số liệu, báo cáo từ DB</option>
+                <option>Hỗ trợ khai báo</option>
+                <option>Hỗ trợ kiểm tra kết nối với bên thứ ba</option>
+                <option>Thay đổi thiết lập admin</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Cụm 4: Telemetry Panel đo lường thời gian (T1, T2, T3) -->
+          <div class="timestamp-card">
+            <div class="timestamp-header">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Mốc thời gian xử lý nghiệp vụ
+              </span>
+              <span class="text-[9px] text-blue-600 font-semibold font-mono">HH:mm dd/MM/yyyy</span>
+            </div>
+
+            <div class="space-y-2">
+              <div class="ts-row">
+                <div class="ts-input-col">
+                  <label class="ts-label">T.Gian gửi ca (T1) <span class="req">*</span></label>
+                  <input type="text" id="time-sent" placeholder="hh:mm dd/mm/yyyy" class="ts-input">
+                </div>
+                <button type="button" onclick="stampTime('time-sent')" class="btn-now">🕒 Now</button>
+              </div>
+
+              <div class="ts-row">
+                <div class="ts-input-col">
+                  <label class="ts-label">T.Điểm nhận ca (T2)</label>
+                  <input type="text" id="time-received" onchange="calcTotalTime()" placeholder="hh:mm dd/mm/yyyy" class="ts-input">
+                </div>
+                <button type="button" onclick="stampTime('time-received')" class="btn-now">🕒 Now</button>
+              </div>
+
+              <div class="ts-row">
+                <div class="ts-input-col">
+                  <label class="ts-label">T.Điểm xử lý xong (T3)</label>
+                  <input type="text" id="time-resolved" onchange="calcTotalTime()" placeholder="hh:mm dd/mm/yyyy" class="ts-input">
+                </div>
+                <button type="button" onclick="stampTime('time-resolved')" class="btn-now btn-done">✔ Xong</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-blue-200 mt-2">
+              <div class="metric-box">
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Thời gian xử lý</span>
+                <div class="flex items-baseline gap-1">
+                  <input type="text" id="time-total" placeholder="0" readonly class="metric-input">
+                  <span class="text-xs font-semibold text-blue-600">phút</span>
+                </div>
+              </div>
+
+              <div class="metric-box">
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Nhóm thời gian</span>
+                <select id="time-group" class="time-group-select">
+                  <option value="<15">&lt; 15 phút</option>
+                  <option value="<30">&lt; 30 phút</option>
+                  <option value=">30">&gt; 30 phút</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cụm 5: Nguyên nhân & Hướng giải quyết -->
+          <div class="form-section-card space-y-2.5">
+            <div class="form-field">
+              <label class="field-label">Nguyên nhân phát sinh</label>
+              <textarea id="input-cause" rows="2" class="field-textarea" placeholder="Nguyên nhân sơ bộ..."></textarea>
+            </div>
+            <div class="form-field">
+              <label class="field-label">Cách xử lý / Kết quả</label>
+              <textarea id="input-resolution" rows="2" class="field-textarea" placeholder="Phương án giải quyết, hướng dẫn user..."></textarea>
+            </div>
+          </div>
+
+          <!-- Cụm 6: Trạng thái ca -->
+          <div class="form-section-card">
+            <label class="field-label mb-1.5">Trạng thái ca hỗ trợ</label>
+            <div class="status-segmented-control">
+              <label class="status-option">
+                <input type="radio" name="status" value="done" checked>
+                <span class="status-label status-label-done">
+                  <span class="dot-indicator dot-green"></span>
+                  Hoàn thành
+                </span>
+              </label>
+              <label class="status-option">
+                <input type="radio" name="status" value="pending">
+                <span class="status-label status-label-pending">
+                  <span class="dot-indicator dot-amber"></span>
+                  Đang xử lý
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="h-2"></div>
+        </div>
+
+        <!-- Sticky Footer -->
+        <div class="form-footer">
+          <button type="button" onclick="alert('Đã lưu ca hỗ trợ thành công!'); switchView('view-dashboard');" class="btn btn-save w-full">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            <span>Lưu Ca Hỗ Trợ</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function switchView(viewId) {
+      document.getElementById('view-login').classList.add('hidden');
+      document.getElementById('view-dashboard').classList.add('hidden');
+      document.getElementById('view-form').classList.add('hidden');
+      
+      const target = document.getElementById(viewId);
+      target.classList.remove('hidden');
+      target.classList.add('flex');
+
+      if (viewId === 'view-dashboard') {
+        const curDate = document.getElementById('current-date');
+        if (!curDate.value) curDate.valueAsDate = new Date();
+      }
+    }
+
+    function formatCurrentTime() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const mo = String(now.getMonth() + 1).padStart(2, '0');
+      const y = now.getFullYear();
+      return `${h}:${m} ${d}/${mo}/${y}`;
+    }
+
+    function stampTime(inputId) {
+      document.getElementById(inputId).value = formatCurrentTime();
+      if (inputId === 'time-received' || inputId === 'time-resolved') {
+        calcTotalTime();
+      }
+    }
+
+    function parseCustomDate(dateStr) {
+      if (!dateStr) return null;
+      try {
+        const parts = dateStr.trim().split(' ');
+        const timeParts = parts[0].split(':');
+        const dateParts = parts[1].split('/');
+        return new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1]);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function calcTotalTime() {
+      const t1Str = document.getElementById('time-sent').value;
+      const t2Str = document.getElementById('time-received').value;
+      const t3Str = document.getElementById('time-resolved').value;
+
+      const baseStart = t2Str ? parseCustomDate(t2Str) : parseCustomDate(t1Str);
+      const end = parseCustomDate(t3Str);
+
+      if (baseStart && end) {
+        const diffMs = end.getTime() - baseStart.getTime();
+        const diffMins = Math.round(diffMs / 60000);
+
+        if (diffMins >= 0) {
+          document.getElementById('time-total').value = diffMins;
+          const groupSelect = document.getElementById('time-group');
+          if (diffMins < 15) groupSelect.value = "<15";
+          else if (diffMins < 30) groupSelect.value = "<30";
+          else groupSelect.value = ">30";
+        }
+      }
+    }
+
+    // Set default date
+    document.getElementById('current-date').valueAsDate = new Date();
+  </script>
+</body>
+</html>

@@ -88,6 +88,21 @@ export async function comparePassword(password: string, hash: string): Promise<b
   return bcrypt.compare(password, hash);
 }
 
+/**
+ * Hash PIN using bcrypt (high salt rounds for low-entropy secret security)
+ */
+export async function hashPin(pin: string): Promise<string> {
+  const salt = await bcrypt.genSalt(12);
+  return bcrypt.hash(pin, salt);
+}
+
+/**
+ * Compare PIN with hash
+ */
+export async function comparePin(pin: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(pin, hash);
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || "pms_jwt_secret_token_default_fallback_2026";
 
 export interface UserSessionPayload {

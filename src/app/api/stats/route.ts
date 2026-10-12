@@ -13,14 +13,30 @@ export async function GET() {
       totalLinks,
       totalStaff,
       totalAccounts,
+      pendingRequestsCount,
+      activeGroupOrdersCount,
       recentLogs,
       recentLinks,
       urgentProjects,
+      urgentRequests,
+      openGroupOrders,
     ] = await Promise.all([
       prisma.project.count({ where: { deletedAt: null } }),
       prisma.docLink.count({ where: { deletedAt: null } }),
       prisma.staff.count({ where: { deletedAt: null } }),
       prisma.staffAccount.count({ where: { deletedAt: null } }),
+      prisma.projectRequest.count({
+        where: {
+          deletedAt: null,
+          status: { in: ["pending", "new", "in_progress"] },
+        },
+      }),
+      prisma.groupOrder.count({
+        where: {
+          deletedAt: null,
+          status: "open",
+        },
+      }),
       session.role === "admin"
         ? prisma.auditLog.findMany({
             take: 6,
@@ -43,6 +59,32 @@ export async function GET() {
           },
         },
       }),
+      prisma.projectRequest.findMany({
+        where: {
+          deletedAt: null,
+          status: { in: ["pending", "new", "in_progress"] },
+        },
+        take: 4,
+        orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+        include: {
+          project: { select: { projectName: true, projectCode: true } },
+          receiver: { select: { fullName: true } },
+        },
+      }),
+      prisma.groupOrder.findMany({
+        where: { deletedAt: null, status: "open" },
+        take: 2,
+        orderBy: { createdAt: "desc" },
+        include: {
+          createdByUser: {
+            select: {
+              username: true,
+              staff: { select: { fullName: true } },
+            },
+          },
+          _count: { select: { members: true, items: true } },
+        },
+      }),
     ]);
 
     return NextResponse.json({
@@ -53,10 +95,14 @@ export async function GET() {
           docLinks: totalLinks,
           staff: totalStaff,
           accounts: totalAccounts,
+          pendingRequests: pendingRequestsCount,
+          activeGroupOrders: activeGroupOrdersCount,
         },
         recentLogs,
         recentLinks,
         urgentProjects,
+        urgentRequests,
+        openGroupOrders,
       },
     });
   } catch (error: any) {

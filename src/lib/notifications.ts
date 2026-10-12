@@ -238,14 +238,35 @@ export const NOTIFICATION_EVENTS: NotificationEventDefinition[] = [
  * Format date time in Vietnamese format
  */
 export function formatDateTimeVN(date: Date): string {
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  const day = pad(date.getDate());
-  const month = pad(date.getMonth() + 1);
-  const year = date.getFullYear();
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  return `${day}/${month}/${year} ${hours}:${minutes}`;
+  try {
+    const formatter = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    // Format: DD/MM/YYYY HH:mm
+    const parts = formatter.formatToParts(date);
+    const day = parts.find((p) => p.type === "day")?.value || "01";
+    const month = parts.find((p) => p.type === "month")?.value || "01";
+    const year = parts.find((p) => p.type === "year")?.value || "2026";
+    const hour = parts.find((p) => p.type === "hour")?.value || "00";
+    const minute = parts.find((p) => p.type === "minute")?.value || "00";
+    return `${day}/${month}/${year} ${hour}:${minute}`;
+  } catch {
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    const day = pad(date.getDate());
+    const month = pad(date.getMonth() + 1);
+    const year = date.getFullYear();
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  }
 }
+
 
 function escapeHtml(text: string): string {
   return text
@@ -387,6 +408,83 @@ async function dispatchToTelegram(params: {
 }
 
 /**
+ * INT-02: Gửi lại thông báo Telegram bị lỗi
+ */
+export async function retryTelegramDelivery(deliveryId: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const delivery = await prisma.notificationDelivery.findUnique({
+      where: { id: deliveryId },
+      include: { notification: true },
+    });
+
+    if (!delivery) {
+      return { success: false, message: "Bản ghi thông báo không tồn tại." };
+    }
+
+    const config = await prisma.telegramConfig.findFirst({
+      where: { enabled: true },
+    });
+
+    if (!config || !config.chatId || !config.botTokenEncrypted) {
+      return { success: false, message: "Chưa cấu hình hoặc kích hoạt Telegram Bot." };
+    }
+
+    let botToken = "";
+    try {
+      botToken = decryptSecret(config.botTokenEncrypted);
+    } catch {
+      await prisma.notificationDelivery.update({
+        where: { id: delivery.id },
+        data: { status: "failed", errorMessage: "Không thể giải mã Bot Token Telegram." },
+      });
+      return { success: false, message: "Không thể giải mã Bot Token." };
+    }
+
+    const messageText = formatTelegramMessage({
+      eventCode: delivery.notification.eventCode || undefined,
+      title: delivery.notification.title,
+      content: delivery.notification.content,
+      targetUrl: delivery.notification.targetUrl,
+      date: delivery.notification.createdAt,
+    });
+
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: config.chatId,
+        text: messageText,
+        parse_mode: "HTML",
+        disable_web_page_preview: false,
+      }),
+    });
+
+    const json = await res.json();
+    if (res.ok && json.ok) {
+      await prisma.notificationDelivery.update({
+        where: { id: delivery.id },
+        data: {
+          status: "sent",
+          sentAt: new Date(),
+          errorMessage: null,
+          externalMessageId: String(json.result?.message_id || ""),
+        },
+      });
+      return { success: true, message: "Gửi lại thông báo Telegram thành công." };
+    } else {
+      const errDesc = json.description || "Lỗi không xác định từ Telegram API";
+      await prisma.notificationDelivery.update({
+        where: { id: delivery.id },
+        data: { status: "failed", errorMessage: errDesc },
+      });
+      return { success: false, message: `Telegram trả về lỗi: ${errDesc}` };
+    }
+  } catch (err: any) {
+    return { success: false, message: err?.message || "Lỗi kết nối mạng khi gửi lại Telegram." };
+  }
+}
+
+/**
  * 13.2 Core Notification Engine: One event -> One notification -> Multiple channels
  */
 export async function createSystemNotification(params: CreateNotificationParams) {
@@ -489,7 +587,9 @@ export async function createSystemNotification(params: CreateNotificationParams)
 export async function checkAndDispatchDueReminders() {
   try {
     const now = new Date();
-    const todayStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
+    // Chuẩn hóa ngày theo múi giờ Asia/Ho_Chi_Minh (INT-04)
+    const todayStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // YYYY-MM-DD
+    const todayDateOnly = new Date(`${todayStr}T00:00:00+07:00`);
 
     // Lấy cài đặt nhắc nhở
     const settingSoon = await prisma.notificationSetting.findUnique({
@@ -518,8 +618,10 @@ export async function checkAndDispatchDueReminders() {
       if (!req.dueDate) continue;
 
       const due = new Date(req.dueDate);
-      const diffTime = due.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const dueDateStr = due.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+      const dueDateOnly = new Date(`${dueDateStr}T00:00:00+07:00`);
+      const diffTime = dueDateOnly.getTime() - todayDateOnly.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
       const followersNames = req.followers.map((f) => f.staff.fullName).join(", ") || "Chưa có";
 

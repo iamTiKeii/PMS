@@ -2,9 +2,17 @@ import type { Metadata } from "next";
 import { AppLayout } from "@/components/AppLayout";
 import "./globals.css";
 
+const appName = process.env.NEXT_PUBLIC_APP_NAME || "ISF Can Tho Hub";
+const appDescription =
+  process.env.NEXT_PUBLIC_APP_DESCRIPTION ||
+  "Hệ thống Quản trị Tập trung Team ISF Cần Thơ"; 
+
 export const metadata: Metadata = {
-  title: "PMS Hub - Quản trị Tài sản Số & Két Mật khẩu Dự án",
-  description: "Nền tảng Quản trị Tập trung Link Docs/Sheets, Thông tin Xác thực Dự án & Danh mục Nhân sự",
+  title: {
+    default: appName,
+    template: `%s | ${appName}`,
+  },
+  description: appDescription,
 };
 
 export default function RootLayout({
@@ -13,16 +21,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi" className="dark h-full antialiased">
+    <html lang="vi" className="h-full antialiased">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.cdnfonts.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
           rel="stylesheet"
+          href="https://fonts.cdnfonts.com/css/sf-pro-display"
+        />
+        <link
+          rel="stylesheet"
+          href="https://fonts.cdnfonts.com/css/sf-mono"
         />
       </head>
-      <body className="min-h-full flex flex-col bg-[#060913] text-slate-100 selection:bg-blue-600 selection:text-white">
+      <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 selection:bg-blue-600 selection:text-white">
         <AppLayout>{children}</AppLayout>
       </body>
     </html>

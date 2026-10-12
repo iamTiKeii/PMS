@@ -148,8 +148,8 @@ export function GroupOrderActivityTimeline({
 
   if (!activities || activities.length === 0) {
     return (
-      <div className="py-6 px-4 text-center rounded-2xl bg-slate-950/60 border border-slate-800 text-slate-400 text-xs">
-        <History className="w-5 h-5 text-slate-600 mx-auto mb-1.5" />
+      <div className="py-6 px-4 text-center rounded-lg bg-slate-50 border border-slate-200 text-slate-500 text-xs">
+        <History className="w-5 h-5 text-slate-400 mx-auto mb-1.5" />
         Chưa có hoạt động nào được ghi nhận cho đơn này.
       </div>
     );
@@ -158,14 +158,14 @@ export function GroupOrderActivityTimeline({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-          <History className="w-3.5 h-3.5 text-blue-400" />
+        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+          <History className="w-3.5 h-3.5 text-blue-600" />
           <span>Lịch sử đơn ({activities.length})</span>
         </h4>
-        <span className="text-[10px] text-slate-500">Mới nhất ở trên cùng</span>
+        <span className="text-[10px] text-slate-400">Mới nhất ở trên cùng</span>
       </div>
 
-      <div className="relative pl-6 sm:pl-8 before:absolute before:left-3 sm:before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
+      <div className="relative pl-6 sm:pl-8 before:absolute before:left-3 sm:before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
         {activities.map((item, idx) => {
           const cfg = getActivityConfig(item.eventCode);
           const Icon = cfg.icon;
@@ -182,38 +182,38 @@ export function GroupOrderActivityTimeline({
             <div key={item.id || idx} className="relative mb-4 last:mb-0 group">
               {/* Dot Icon */}
               <div
-                className={`absolute -left-6 sm:-left-8 top-0.5 w-6 h-6 sm:w-7 sm:h-7 rounded-xl flex items-center justify-center border shadow-md transition-transform group-hover:scale-110 ${cfg.color}`}
+                className={`absolute -left-6 sm:-left-8 top-0.5 w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center border shadow-xs transition-transform group-hover:scale-105 ${cfg.color}`}
               >
                 <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
 
               {/* Card */}
-              <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-slate-800/90 hover:border-slate-700/80 transition-all text-xs space-y-1.5">
+              <div className="p-3.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 transition-colors text-xs space-y-1.5 shadow-xs">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-white text-xs">
+                    <span className="font-bold text-slate-900 text-xs">
                       {item.title}
                     </span>
                     <span
-                      className={`px-2 py-0.5 rounded-lg border text-[10px] font-semibold ${cfg.badgeColor}`}
+                      className={`px-2 py-0.5 rounded border text-[10px] font-semibold ${cfg.badgeColor}`}
                     >
                       {cfg.badge}
                     </span>
                   </div>
-                  <span className="text-[11px] font-mono text-slate-400">
+                  <span className="text-[11px] font-mono text-slate-500">
                     {formatActivityDate(item.eventTime)}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                <div className="flex items-center gap-2 text-[11px] text-slate-500">
                   <span>Người thực hiện:</span>
-                  <span className="text-slate-200 font-medium">
+                  <span className="text-slate-800 font-medium">
                     {item.actorName || "Hệ thống"}
                   </span>
                 </div>
 
                 {item.description && (
-                  <p className="text-slate-300 text-xs leading-relaxed">
+                  <p className="text-slate-600 text-xs leading-relaxed">
                     {item.description}
                   </p>
                 )}
@@ -223,7 +223,7 @@ export function GroupOrderActivityTimeline({
                     <button
                       type="button"
                       onClick={() => toggleExpand(item.id)}
-                      className="inline-flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 font-medium py-0.5"
+                      className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-700 font-medium py-0.5"
                     >
                       <span>{isExpanded ? "Ẩn chi tiết" : "Xem chi tiết"}</span>
                       {isExpanded ? (
@@ -234,8 +234,8 @@ export function GroupOrderActivityTimeline({
                     </button>
 
                     {isExpanded && (
-                      <div className="mt-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-[11px] space-y-1 font-mono text-slate-300 overflow-x-auto">
-                        <pre className="text-[10px] text-slate-300 whitespace-pre-wrap">
+                      <div className="mt-2 p-2.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] space-y-1 font-mono text-slate-700 overflow-x-auto">
+                        <pre className="text-[10px] text-slate-700 whitespace-pre-wrap">
                           {JSON.stringify(metadata, null, 2)}
                         </pre>
                       </div>

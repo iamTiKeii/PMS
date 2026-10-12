@@ -60,9 +60,28 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
     });
 
+    let userRolesMap: Record<string, any[]> = {};
+    try {
+      const allUserRoles = await prisma.userRole.findMany({
+        where: { userId: { in: users.map((u) => u.id) } },
+        include: { role: true },
+      });
+      for (const ur of allUserRoles) {
+        if (!userRolesMap[ur.userId]) userRolesMap[ur.userId] = [];
+        userRolesMap[ur.userId].push(ur);
+      }
+    } catch (e) {
+      console.warn("Could not load userRoles in /api/users:", e);
+    }
+
+    const formatted = users.map((u) => ({
+      ...u,
+      userRoles: userRolesMap[u.id] || [],
+    }));
+
     return NextResponse.json({
       success: true,
-      data: users,
+      data: formatted,
     });
   } catch (error: any) {
     if (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN") {

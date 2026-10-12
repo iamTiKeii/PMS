@@ -9,22 +9,22 @@ import {
   KeyRound,
   Users2,
   ExternalLink,
-  ShieldCheck,
   Plus,
-  ArrowUpRight,
   Clock,
-  Sparkles,
-  Layers,
   ChevronRight,
   Activity,
   CheckCircle2,
   Lock,
-  Search,
   Copy,
   Check,
+  UtensilsCrossed,
+  AlertTriangle,
+  ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/Toast";
+import { Skeleton } from "@/components/Skeleton";
 
 export default function DashboardPage() {
   const { success } = useToast();
@@ -56,30 +56,27 @@ export default function DashboardPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Chào buổi sáng";
-    if (hour < 18) return "Chào buổi chiều";
-    return "Chào buổi tối";
-  };
+  const urgentRequestsCount = stats?.counts?.pendingRequests || 0;
+  const activeOrdersCount = stats?.counts?.activeGroupOrders || 0;
+  const hasActionableItems = urgentRequestsCount > 0 || activeOrdersCount > 0;
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#060913] bg-cyber-grid">
+    <div className="flex-1 flex flex-col min-w-0 bg-[#F1F3F6] min-h-screen">
       <Header
         title="Bảng Điều khiển Tổng quan"
-        subtitle="Hệ thống Quản trị Tập trung Tài sản Số, Nhân sự & Két Mật khẩu Dự án"
+        subtitle="Hệ thống Quản trị Tập trung Dự án, Vận hành QLYC & Két Mật khẩu Site"
         actionButton={
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <Link
               href="/doc-links"
-              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-bold border border-slate-800 flex items-center gap-1.5 transition-all shadow-md"
+              className="px-3 py-1.5 rounded-md bg-white hover:bg-[#F8FAFC] text-[#172033] text-xs font-medium border border-[#DDE2E9] flex items-center gap-1.5 transition-colors shadow-xs"
             >
-              <Plus className="w-3.5 h-3.5 text-blue-400" />
+              <Plus className="w-3.5 h-3.5 text-[#2457A7]" />
               <span>Thêm Link Docs</span>
             </Link>
             <Link
               href="/projects"
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-1.5 transition-all"
+              className="px-3 py-1.5 rounded-md bg-[#2457A7] hover:bg-[#1C4585] text-white text-xs font-medium shadow-xs flex items-center gap-1.5 transition-colors"
             >
               <FolderKanban className="w-3.5 h-3.5" />
               <span>Quản lý Dự án</span>
@@ -88,187 +85,283 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="p-6 md:p-8 space-y-8 max-w-7xl w-full mx-auto">
-        {/* Hero Welcome Banner with Cyber Gradients */}
-        <div className="relative p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-blue-950/60 via-indigo-950/40 to-slate-950 border border-blue-500/20 shadow-2xl overflow-hidden backdrop-blur-xl">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-          <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-cyan-400 border border-blue-500/20 text-[11px] font-bold tracking-wide">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Trung tâm Điều hành Dự án Tập trung</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                {getGreeting()}, <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-indigo-300 bg-clip-text text-transparent">Quản trị viên</span>
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Hệ thống quản trị tài sản số, liên kết dự án, tài khoản đăng nhập và nhân sự phụ trách.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
-              <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 text-left">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trạng thái Hệ thống</div>
-                <div className="text-sm font-extrabold text-emerald-400 flex items-center gap-1.5 mt-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Hoạt động ổn định
+      <div className="p-4 sm:p-6 space-y-4 max-w-7xl w-full mx-auto">
+        {/* Action Center: Việc Cần Xử Lý Ngay */}
+        {hasActionableItems && (
+          <div className="p-4 rounded-md bg-white border border-[#DDE2E9] shadow-xs relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EDF1F5]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-md bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-xs sm:text-sm font-bold text-[#172033] flex items-center gap-2">
+                    <span>Việc Cần Xử Lý Ngay (Action Center)</span>
+                    <span className="px-1.5 py-0.2 rounded-full bg-[#FFFBEB] text-[#B45309] text-[10px] font-semibold border border-[#FDE68A]">
+                      {urgentRequestsCount + activeOrdersCount} mục
+                    </span>
+                  </h2>
+                  <p className="text-[11px] text-[#64748B]">
+                    Các yêu cầu nghiệp vụ đang chờ giải quyết và đơn đặt nhóm đang mở gom món
+                  </p>
                 </div>
               </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                {urgentRequestsCount > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#E5EDFA] text-[#2457A7] border border-[#BFD4F7] font-medium text-[11px]">
+                    <Clock className="w-3 h-3 text-[#2457A7]" />
+                    {urgentRequestsCount} QLYC chờ xử lý
+                  </span>
+                )}
+                {activeOrdersCount > 0 && (
+                  <Link
+                    href="/group-orders"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] font-medium text-[11px] hover:bg-[#FEF3C7] transition-colors"
+                  >
+                    <UtensilsCrossed className="w-3 h-3 text-[#B45309]" />
+                    {activeOrdersCount} Đơn đang gom món
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Action Item Preview */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3">
+              {stats?.urgentRequests && stats.urgentRequests.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] block">
+                    Yêu cầu QLYC ưu tiên cao nhất
+                  </span>
+                  <div className="space-y-1.5">
+                    {stats.urgentRequests.slice(0, 2).map((req: any) => (
+                      <Link
+                        key={req.id}
+                        href={`/projects/${req.projectId}?tab=requests`}
+                        className="p-2 rounded-md bg-[#F8FAFC] hover:bg-[#F1F3F6] border border-[#DDE2E9] flex items-center justify-between gap-2 text-xs transition-colors group"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[10px] font-bold text-[#2457A7] bg-[#E5EDFA] px-1 rounded border border-[#BFD4F7]">
+                              {req.requestCode}
+                            </span>
+                            <span className="font-semibold text-[#172033] truncate group-hover:text-[#2457A7]">
+                              {req.project?.projectName}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-[#64748B] truncate mt-0.5">
+                            Phụ trách: {req.receiver?.fullName || "Chưa gán"}
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          {req.dueDate ? (
+                            <span className="text-[10px] font-medium text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] px-1.5 py-0.5 rounded">
+                              Hạn: {new Date(req.dueDate).toLocaleDateString("vi-VN")}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-[#94A3B8]">Không có hạn</span>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {stats?.openGroupOrders && stats.openGroupOrders.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] block">
+                    Đơn đặt nhóm đang gom
+                  </span>
+                  <div className="space-y-1.5">
+                    {stats.openGroupOrders.slice(0, 2).map((order: any) => (
+                      <Link
+                        key={order.id}
+                        href={`/group-orders/${order.id}`}
+                        className="p-2 rounded-md bg-[#F8FAFC] hover:bg-[#F1F3F6] border border-[#DDE2E9] flex items-center justify-between gap-2 text-xs transition-colors group"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[10px] font-bold text-[#15803D] bg-[#F0FDF4] px-1 rounded border border-[#BBF7D0]">
+                              {order.orderCode}
+                            </span>
+                            <span className="font-semibold text-[#172033] truncate group-hover:text-[#2457A7]">
+                              {order.title}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-[#64748B] truncate mt-0.5">
+                            Trưởng nhóm: {order.createdByUser?.staff?.fullName || order.createdByUser?.username} • {order._count?.items || 0} món
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          <span className="text-[10px] font-semibold text-[#15803D] bg-[#F0FDF4] border border-[#BBF7D0] px-1.5 py-0.5 rounded">
+                            {order.totalAmount ? `${order.totalAmount.toLocaleString("vi-VN")} đ` : "Đang gom"}
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* 4 Interactive KPI Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {/* Card 1: Projects */}
+        {/* KPI Metric Tiles Grid (4 Professional Columns) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {/* Tile 1: Projects */}
           <Link
             href="/projects"
-            className="group p-5 rounded-2xl bg-gradient-to-br from-slate-900/90 via-slate-900/60 to-slate-950 border border-slate-800/80 shadow-xl hover:border-blue-500/50 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-300 relative overflow-hidden"
+            className="p-4 rounded-md bg-white border border-[#DDE2E9] shadow-xs hover:border-[#CBD5E1] transition-colors flex flex-col justify-between group"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/15 transition-all" />
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Dự án & Link HIS
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
+                Dự án Đang chạy
               </span>
-              <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <FolderKanban className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-md bg-[#E5EDFA] text-[#2457A7] border border-[#BFD4F7] flex items-center justify-center">
+                <FolderKanban className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-3xl font-extrabold text-white tracking-tight relative z-10">
-              {loading ? (
-                <div className="w-12 h-8 bg-slate-800 animate-pulse rounded-lg" />
-              ) : (
-                stats?.counts.projects || 0
-              )}
-            </div>
-            <div className="text-xs text-slate-400 mt-2 flex items-center justify-between relative z-10">
-              <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                Đang vận hành thực tế
-              </span>
-              <span className="text-blue-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 font-bold">
-                Chi tiết <ArrowUpRight className="w-3.5 h-3.5" />
-              </span>
+            <div className="mt-2">
+              <div className="text-2xl font-bold text-[#172033] tracking-tight">
+                {loading ? (
+                  <Skeleton className="h-7 w-12" />
+                ) : (
+                  stats?.counts?.projects || 0
+                )}
+              </div>
+              <div className="text-[11px] text-[#64748B] mt-1 flex items-center justify-between">
+                <span className="text-[#15803D] font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#15803D]" />
+                  Đang vận hành
+                </span>
+                <span className="text-[#2457A7] group-hover:underline flex items-center gap-0.5 font-medium">
+                  Xem danh sách <ChevronRight className="w-3 h-3" />
+                </span>
+              </div>
             </div>
           </Link>
 
-          {/* Card 2: Doc Links */}
+          {/* Tile 2: Actionable QLYC Requests */}
+          <Link
+            href="/projects"
+            className="p-4 rounded-md bg-white border border-[#DDE2E9] shadow-xs hover:border-[#CBD5E1] transition-colors flex flex-col justify-between group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
+                Yêu cầu QLYC Mở
+              </span>
+              <div className="w-8 h-8 rounded-md bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] flex items-center justify-center">
+                <Clock className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-2xl font-bold text-[#172033] tracking-tight">
+                {loading ? (
+                  <Skeleton className="h-7 w-12" />
+                ) : (
+                  stats?.counts?.pendingRequests || 0
+                )}
+              </div>
+              <div className="text-[11px] text-[#64748B] mt-1 flex items-center justify-between">
+                <span className="text-[#B45309] font-medium">Cần theo dõi xử lý</span>
+                <span className="text-[#2457A7] group-hover:underline flex items-center gap-0.5 font-medium">
+                  Xem QLYC <ChevronRight className="w-3 h-3" />
+                </span>
+              </div>
+            </div>
+          </Link>
+
+          {/* Tile 3: Doc Links */}
           <Link
             href="/doc-links"
-            className="group p-5 rounded-2xl bg-gradient-to-br from-slate-900/90 via-slate-900/60 to-slate-950 border border-slate-800/80 shadow-xl hover:border-emerald-500/50 hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 relative overflow-hidden"
+            className="p-4 rounded-md bg-white border border-[#DDE2E9] shadow-xs hover:border-[#CBD5E1] transition-colors flex flex-col justify-between group"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all" />
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Link Docs / Sheets
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
+                Kho Tài liệu Số
               </span>
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <FileText className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-md bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0] flex items-center justify-center">
+                <FileText className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-3xl font-extrabold text-white tracking-tight relative z-10">
-              {loading ? (
-                <div className="w-12 h-8 bg-slate-800 animate-pulse rounded-lg" />
-              ) : (
-                stats?.counts.docLinks || 0
-              )}
-            </div>
-            <div className="text-xs text-slate-400 mt-2 flex items-center justify-between relative z-10">
-              <span className="text-[11px] text-cyan-400 font-semibold">Tự động bóc tách ID</span>
-              <span className="text-emerald-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 font-bold">
-                Mở kho <ArrowUpRight className="w-3.5 h-3.5" />
-              </span>
+            <div className="mt-2">
+              <div className="text-2xl font-bold text-[#172033] tracking-tight">
+                {loading ? (
+                  <Skeleton className="h-7 w-12" />
+                ) : (
+                  stats?.counts?.docLinks || 0
+                )}
+              </div>
+              <div className="text-[11px] text-[#64748B] mt-1 flex items-center justify-between">
+                <span className="text-[#64748B]">Docs / Sheets / Drive</span>
+                <span className="text-[#15803D] group-hover:underline flex items-center gap-0.5 font-medium">
+                  Mở kho link <ChevronRight className="w-3 h-3" />
+                </span>
+              </div>
             </div>
           </Link>
 
-          {/* Card 3: Project Site Accounts */}
+          {/* Tile 4: Accounts in Vault */}
           <Link
-            href="/projects"
-            className="group p-5 rounded-2xl bg-gradient-to-br from-slate-900/90 via-slate-900/60 to-slate-950 border border-slate-800/80 shadow-xl hover:border-amber-500/50 hover:shadow-2xl hover:shadow-amber-500/10 transition-all duration-300 relative overflow-hidden"
+            href="/vault"
+            className="p-4 rounded-md bg-white border border-[#DDE2E9] shadow-xs hover:border-[#CBD5E1] transition-colors flex flex-col justify-between group"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/15 transition-all" />
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Tài khoản Site Dự án
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">
+                Tài khoản Két Site
               </span>
-              <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <KeyRound className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-md bg-[#FAF5FF] text-[#7E22CE] border border-[#E9D5FF] flex items-center justify-center">
+                <KeyRound className="w-4 h-4" />
               </div>
             </div>
-            <div className="text-3xl font-extrabold text-white tracking-tight relative z-10">
-              {loading ? (
-                <div className="w-12 h-8 bg-slate-800 animate-pulse rounded-lg" />
-              ) : (
-                stats?.counts.accounts || 0
-              )}
-            </div>
-            <div className="text-xs text-slate-400 mt-2 flex items-center justify-between relative z-10">
-              <span className="text-[11px] text-amber-400 font-semibold flex items-center gap-1">
-                <Lock className="w-3 h-3" />
-                Bảo mật an toàn
-              </span>
-              <span className="text-amber-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 font-bold">
-                Xem dự án <ArrowUpRight className="w-3.5 h-3.5" />
-              </span>
-            </div>
-          </Link>
-
-          {/* Card 4: Staff Directory */}
-          <Link
-            href="/staff"
-            className="group p-5 rounded-2xl bg-gradient-to-br from-slate-900/90 via-slate-900/60 to-slate-950 border border-slate-800/80 shadow-xl hover:border-purple-500/50 hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-300 relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/15 transition-all" />
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Danh bạ Nhân sự
-              </span>
-              <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Users2 className="w-5 h-5" />
+            <div className="mt-2">
+              <div className="text-2xl font-bold text-[#172033] tracking-tight">
+                {loading ? (
+                  <Skeleton className="h-7 w-12" />
+                ) : (
+                  stats?.counts?.accounts || 0
+                )}
               </div>
-            </div>
-            <div className="text-3xl font-extrabold text-white tracking-tight relative z-10">
-              {loading ? (
-                <div className="w-12 h-8 bg-slate-800 animate-pulse rounded-lg" />
-              ) : (
-                stats?.counts.staff || 0
-              )}
-            </div>
-            <div className="text-xs text-slate-400 mt-2 flex items-center justify-between relative z-10">
-              <span className="text-[11px] text-purple-400 font-semibold">Phân cấp L1 / L2 / L3</span>
-              <span className="text-purple-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 font-bold">
-                Xem <ArrowUpRight className="w-3.5 h-3.5" />
-              </span>
+              <div className="text-[11px] text-[#64748B] mt-1 flex items-center justify-between">
+                <span className="text-[#7E22CE] font-medium flex items-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  Mã hóa PIN
+                </span>
+                <span className="text-[#7E22CE] group-hover:underline flex items-center gap-0.5 font-medium">
+                  Mở Két <ChevronRight className="w-3 h-3" />
+                </span>
+              </div>
             </div>
           </Link>
         </div>
 
         {/* Two-Column Grid: Active Projects & Recent Docs */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-7">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Section: Urgent / Active Projects */}
-          <div className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800/80 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center">
-                  <FolderKanban className="w-4 h-4" />
+          <div className="p-4 rounded-md bg-white border border-[#DDE2E9] shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-[#EDF1F5] pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-md bg-[#E5EDFA] text-[#2457A7] border border-[#BFD4F7] flex items-center justify-center">
+                  <FolderKanban className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-white tracking-tight">Dự án Đang Vận hành Trọng điểm</h3>
-                  <p className="text-[11px] text-slate-400">Danh sách dự án đang vận hành</p>
+                  <h3 className="text-xs font-semibold text-[#172033]">Dự án Đang Vận hành Trọng điểm</h3>
+                  <p className="text-[11px] text-[#64748B]">Các hệ thống HIS được phân bổ kỹ thuật</p>
                 </div>
               </div>
-              <Link href="/projects" className="text-xs text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1">
-                Tất cả ({stats?.counts.projects || 0}) <ChevronRight className="w-3.5 h-3.5" />
+              <Link href="/projects" className="text-xs text-[#2457A7] hover:underline font-medium flex items-center gap-0.5">
+                Xem tất cả ({stats?.counts?.projects || 0}) <ChevronRight className="w-3 h-3" />
               </Link>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {loading ? (
-                <div className="py-8 text-center text-slate-500 text-xs">Đang tải dữ liệu dự án...</div>
+                <div className="py-6 text-center text-[#64748B] text-xs">Đang tải dữ liệu dự án...</div>
               ) : !stats?.urgentProjects || stats.urgentProjects.length === 0 ? (
-                <div className="py-8 text-center text-slate-500 text-xs">Chưa có dự án nào đang hoạt động.</div>
+                <div className="py-6 text-center text-[#64748B] text-xs">Chưa có dự án nào đang hoạt động.</div>
               ) : (
                 stats.urgentProjects.map((p: any) => {
                   const leadStaff = p.assignments?.find((a: any) => a.tierLevel === 1)?.staff;
@@ -277,46 +370,50 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={p.id}
-                      className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                      className="p-2.5 rounded-md bg-[#F8FAFC] border border-[#DDE2E9] hover:bg-[#F1F3F6] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
                     >
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded bg-[#E5EDFA] text-[#2457A7] border border-[#BFD4F7] uppercase">
                             {p.projectCode || "PROJECT"}
                           </span>
-                          <span className="text-xs font-bold text-white truncate group-hover:text-blue-400 transition-colors">
+                          <Link
+                            href={`/projects/${p.id}`}
+                            className="font-semibold text-[#172033] hover:text-[#2457A7] truncate transition-colors"
+                          >
                             {p.projectName}
-                          </span>
+                          </Link>
                         </div>
 
-                        <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                        <div className="flex items-center gap-2 text-[11px] text-[#64748B]">
                           {leadStaff && (
                             <span className="truncate">
-                              L1 Lead: <strong className="text-slate-300">{leadStaff.fullName}</strong>
+                              Lead L1: <strong className="text-[#172033] font-medium">{leadStaff.fullName}</strong>
                             </span>
                           )}
                           {pmStaff && (
                             <span className="truncate">
-                              L2 PM: <strong className="text-slate-300">{pmStaff.fullName}</strong>
+                              • PM L2: <strong className="text-[#172033] font-medium">{pmStaff.fullName}</strong>
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
                           onClick={() => handleCopy(p.systemHisUrl, p.id)}
-                          className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-                          title="Sao chép link hệ thống HIS"
+                          className="p-1.5 rounded hover:bg-white text-[#64748B] hover:text-[#172033] transition-colors"
+                          title="Sao chép link HIS"
+                          aria-label="Sao chép link hệ thống HIS"
                         >
-                          {copiedId === p.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedId === p.id ? <Check className="w-3.5 h-3.5 text-[#15803D]" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                         <a
                           href={p.systemHisUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                          className="px-2.5 py-1 rounded bg-white hover:bg-[#F8FAFC] text-[#2457A7] border border-[#DDE2E9] text-xs font-medium flex items-center gap-1 transition-colors shadow-xs"
                         >
                           <span>Mở HIS</span>
                           <ExternalLink className="w-3 h-3" />
@@ -330,51 +427,56 @@ export default function DashboardPage() {
           </div>
 
           {/* Section: Recent Doc Links */}
-          <div className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800/80 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
-                  <FileText className="w-4 h-4" />
+          <div className="p-4 rounded-md bg-white border border-[#DDE2E9] shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-[#EDF1F5] pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-md bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0] flex items-center justify-center">
+                  <FileText className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-white tracking-tight">Tài liệu Số Mới Cập nhật</h3>
-                  <p className="text-[11px] text-slate-400">Tài liệu, biểu mẫu và liên kết quan trọng</p>
+                  <h3 className="text-xs font-semibold text-[#172033]">Tài liệu Số Mới Cập nhật</h3>
+                  <p className="text-[11px] text-[#64748B]">Google Docs, Sheets và Drive</p>
                 </div>
               </div>
-              <Link href="/doc-links" className="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
-                Tất cả ({stats?.counts.docLinks || 0}) <ChevronRight className="w-3.5 h-3.5" />
+              <Link href="/doc-links" className="text-xs text-[#2457A7] hover:underline font-medium flex items-center gap-0.5">
+                Xem tất cả ({stats?.counts?.docLinks || 0}) <ChevronRight className="w-3 h-3" />
               </Link>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {loading ? (
-                <div className="py-8 text-center text-slate-500 text-xs">Đang tải kho tài liệu...</div>
+                <div className="py-6 text-center text-[#64748B] text-xs">Đang tải kho tài liệu...</div>
               ) : !stats?.recentLinks || stats.recentLinks.length === 0 ? (
-                <div className="py-8 text-center text-slate-500 text-xs">Chưa có liên kết tài liệu nào.</div>
+                <div className="py-6 text-center text-[#64748B] text-xs">Chưa có liên kết tài liệu nào.</div>
               ) : (
                 stats.recentLinks.map((doc: any) => (
                   <div
                     key={doc.id}
-                    className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 transition-all flex items-center justify-between gap-3 group"
+                    className="p-2.5 rounded-md bg-[#F8FAFC] border border-[#DDE2E9] hover:bg-[#F1F3F6] transition-colors flex items-center justify-between gap-2 text-xs"
                   >
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5">
                         <span
-                          className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase ${
+                          className={`text-[9px] font-semibold px-1.5 py-0.2 rounded uppercase ${
                             doc.linkCategory === "docs"
-                              ? "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                              ? "bg-[#E5EDFA] text-[#2457A7] border border-[#BFD4F7]"
                               : doc.linkCategory === "sheets"
-                              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                              : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                              ? "bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]"
+                              : "bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]"
                           }`}
                         >
                           {doc.linkCategory}
                         </span>
-                        <span className="text-xs font-bold text-white truncate group-hover:text-emerald-400 transition-colors">
+                        <a
+                          href={doc.targetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-[#172033] hover:text-[#2457A7] truncate transition-colors"
+                        >
                           {doc.title}
-                        </span>
+                        </a>
                       </div>
-                      <div className="text-[11px] text-slate-400 truncate max-w-sm">
+                      <div className="text-[11px] text-[#64748B] truncate max-w-sm">
                         {doc.targetUrl}
                       </div>
                     </div>
@@ -383,10 +485,11 @@ export default function DashboardPage() {
                       href={doc.targetUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-2.5 rounded-xl bg-slate-800 hover:bg-emerald-600/20 text-slate-300 hover:text-emerald-300 border border-slate-700 transition-all shrink-0"
+                      className="p-1.5 rounded bg-white hover:bg-[#F1F3F6] text-[#64748B] hover:text-[#2457A7] border border-[#DDE2E9] transition-colors shrink-0 shadow-xs"
                       title="Mở tài liệu trên tab mới"
+                      aria-label="Mở tài liệu trên tab mới"
                     >
-                      <ExternalLink className="w-4 h-4" />
+                      <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   </div>
                 ))
@@ -395,40 +498,40 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Section: Live Security Audit Trail (Admin only or summary) */}
+        {/* Section: Live Security Audit Trail */}
         {stats?.recentLogs && stats.recentLogs.length > 0 && (
-          <div className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800/80 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center justify-center">
-                  <Activity className="w-4 h-4" />
+          <div className="p-4 rounded-md bg-white border border-[#DDE2E9] shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-[#EDF1F5] pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-md bg-[#F1F3F6] text-[#475569] border border-[#DDE2E9] flex items-center justify-center">
+                  <Activity className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-white tracking-tight">Nhật ký Hoạt động An ninh Hệ thống (Live Audit Feed)</h3>
-                  <p className="text-[11px] text-slate-400">Ghi nhận bất biến 100% các thao tác thay đổi và mở mật khẩu</p>
+                  <h3 className="text-xs font-semibold text-[#172033]">Nhật ký Hoạt động An ninh (Audit Trail)</h3>
+                  <p className="text-[11px] text-[#64748B]">Ghi nhận các thao tác mở mật khẩu két và đăng nhập</p>
                 </div>
               </div>
-              <Link href="/audit-logs" className="text-xs text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1">
-                Xem toàn bộ nhật ký <ChevronRight className="w-3.5 h-3.5" />
+              <Link href="/audit-logs" className="text-xs text-[#2457A7] hover:underline font-medium flex items-center gap-0.5">
+                Xem toàn bộ nhật ký <ChevronRight className="w-3 h-3" />
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
               {stats.recentLogs.map((log: any) => (
                 <div
                   key={log.id}
-                  className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 flex items-start gap-3 text-xs"
+                  className="p-2.5 rounded-md bg-[#F8FAFC] border border-[#DDE2E9] flex items-start gap-2 text-xs"
                 >
-                  <div className="w-2 h-2 rounded-full bg-cyan-400 mt-1.5 shrink-0 animate-pulse" />
-                  <div className="space-y-1 min-w-0 flex-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#2457A7] mt-1.5 shrink-0" />
+                  <div className="space-y-0.5 min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">
-                      <span className="font-mono text-[10px] font-bold text-slate-300 bg-slate-800/80 px-1.5 py-0.5 rounded truncate">
+                      <span className="font-mono text-[10px] font-semibold text-[#172033] bg-white border border-[#DDE2E9] px-1 py-0.2 rounded truncate">
                         {log.actionCode}
                       </span>
-                      <span className="text-[10px] text-slate-500">{formatDate(log.createdAt)}</span>
+                      <span className="text-[10px] text-[#64748B]">{formatDate(log.createdAt)}</span>
                     </div>
-                    <div className="text-[11px] text-slate-400">
-                      Người thực hiện: <strong className="text-slate-200">{log.user?.username || "System"}</strong>
+                    <div className="text-[11px] text-[#64748B]">
+                      Người thực hiện: <strong className="text-[#172033] font-medium">{log.user?.username || "System"}</strong>
                     </div>
                   </div>
                 </div>

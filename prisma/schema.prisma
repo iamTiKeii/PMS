@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 model User {
@@ -28,6 +29,13 @@ model User {
   createdGroupOrders GroupOrder[]       @relation("CreatedGroupOrders")
   groupOrderMembers  GroupOrderMember[]
   groupOrderItems    GroupOrderItem[]
+  ownedVaultAccounts   StaffAccount[]     @relation("VaultAccountOwner")
+  createdVaultAccounts StaffAccount[]     @relation("VaultAccountCreator")
+  vaultSecurity        UserVaultSecurity?
+  userRoles            UserRole[]
+  userScopes           UserRoleScope[]
+  createdSupportTickets   SupportTicket[]    @relation("TicketCreator")
+  assignedSupportTickets  SupportTicket[]    @relation("TicketAssignee")
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   deletedAt          DateTime?
@@ -50,6 +58,7 @@ model Staff {
   requestedRequests  ProjectRequest[]    @relation("RequesterStaff")
   receivedRequests   ProjectRequest[]    @relation("ReceiverStaff")
   followedRequests   RequestFollower[]
+  contactProjects    Project[]           @relation("ProjectContactStaff")
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   deletedAt          DateTime?
@@ -73,23 +82,46 @@ model DocLink {
   @@map("doc_links")
 }
 
-model Project {
-  id              String              @id @default(cuid())
-  projectCode     String?             @unique
-  projectName     String              @unique
-  shortName       String?             @unique @map("short_name") @db.VarChar(50) // Prefix mã QLYC (VD: DKCT)
-  requestSequence Int                 @default(0) @map("request_sequence") // Sequence sinh mã QLYC
-  systemHisUrl    String
-  defaultPassword String?
-  status          String              @default("active") // active, maintenance, closed
-  description     String?
-  assignments     ProjectAssignment[]
-  siteAccounts    StaffAccount[]
-  requests        ProjectRequest[]
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  deletedAt       DateTime?
+model Region {
+  id        String    @id @default(cuid()) @db.VarChar(36)
+  code      String    @unique @db.VarChar(50)
+  name      String    @unique @db.VarChar(255)
+  sortOrder Int       @default(0) @map("sort_order")
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
+  projects  Project[]
+
+  @@map("regions")
+}
+
+model Project {
+  id                   String              @id @default(cuid())
+  projectCode          String?             @unique
+  projectName          String              @unique
+  shortName            String?             @unique @map("short_name") @db.VarChar(50) // Prefix mã QLYC (VD: DKCT)
+  requestSequence      Int                 @default(0) @map("request_sequence") // Sequence sinh mã QLYC
+  systemHisUrl         String
+  defaultPassword      String?
+  status               String              @default("active") // active, maintenance, closed
+  description          String?
+  regionId             String?             @map("region_id") @db.VarChar(36)
+  region               Region?             @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  contactStaffId       String?             @map("contact_staff_id") @db.VarChar(36)
+  contactStaffName     String?             @map("contact_staff_name") @db.VarChar(255)
+  contactStaffPosition String?             @map("contact_staff_position") @db.VarChar(255)
+  contactStaff         Staff?              @relation("ProjectContactStaff", fields: [contactStaffId], references: [id], onDelete: SetNull)
+  assignments          ProjectAssignment[]
+  siteAccounts         StaffAccount[]
+  requests             ProjectRequest[]
+  supportTickets       SupportTicket[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  deletedAt            DateTime?
+
+  @@index([contactStaffId])
+  @@index([regionId])
   @@map("projects")
 }
 
@@ -112,8 +144,8 @@ model StaffAccount {
   id                    String    @id @default(cuid())
   projectId             String
   project               Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  staffId               String
-  staff                 Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staffId               String?
+  staff                 Staff?    @relation(fields: [staffId], references: [id], onDelete: Cascade)
   accountLabel          String
   siteLoginUsername     String
   sitePasswordEncrypted String
@@ -121,12 +153,22 @@ model StaffAccount {
   encryptionAuthTag     String // 16-byte Auth Tag in base64
   status                String    @default("in_use") // in_use, stopped, rotation_needed
   notes                 String?
+  url                   String?   @db.Text
+  ownerUserId           String?   @map("owner_user_id") @db.VarChar(36)
+  ownerUser             User?     @relation("VaultAccountOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  createdById           String?   @map("created_by") @db.VarChar(36)
+  createdByUser         User?     @relation("VaultAccountCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  passwordStatus        String    @default("DEFAULT") @map("password_status") @db.VarChar(20) // DEFAULT, CUSTOM
+  passwordChangedAt     DateTime? @map("password_changed_at")
   lastRotatedAt         DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   deletedAt             DateTime?
 
-  @@unique([projectId, staffId, siteLoginUsername])
+  @@index([projectId])
+  @@index([staffId])
+  @@index([ownerUserId])
+  @@index([createdById])
   @@map("staff_accounts")
 }
 
@@ -332,8 +374,9 @@ model UserPaymentConfig {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   bankCode       String   @map("bank_code") @db.VarChar(50) // VD: MB, VCB, TCB, ACB
   bankName       String   @map("bank_name") @db.VarChar(100) // Tên ngân hàng
-  accountNumber  String   @map("account_number") @db.VarChar(50) // Số tài khoản
+  accountNumber  String   @map("account_number") @db.VarChar(50) // Số tài khoản (chuỗi, giữ nguyên số 0 đầu)
   accountName    String   @map("account_name") @db.VarChar(100) // Tên chủ tài khoản
+  branch         String?  @map("branch") @db.VarChar(200) // Chi nhánh
   defaultContent String?  @default("ORDER") @map("default_content") @db.VarChar(100) // Cú pháp chuyển khoản mặc định
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
@@ -406,18 +449,23 @@ model GroupOrderItem {
 }
 
 model GroupOrderPaymentReminder {
-  id                String     @id @default(cuid()) @db.VarChar(36)
-  groupOrderId      String     @map("group_order_id") @db.VarChar(36)
-  groupOrder        GroupOrder @relation(fields: [groupOrderId], references: [id], onDelete: Cascade)
-  createdById       String     @map("created_by") @db.VarChar(36)
-  content           String     @db.Text
-  bankInfo          String?    @map("bank_info") @db.Text
-  qrDataUrl         String?    @map("qr_data_url") @db.Text
-  unpaidCount       Int        @default(0) @map("unpaid_count")
-  unpaidAmount      Int        @default(0) @map("unpaid_amount")
-  telegramMessageId String?    @map("telegram_message_id") @db.VarChar(100)
-  sentAt            DateTime   @default(now()) @map("sent_at")
-  createdAt         DateTime   @default(now()) @map("created_at")
+  id                       String     @id @default(cuid()) @db.VarChar(36)
+  groupOrderId             String     @map("group_order_id") @db.VarChar(36)
+  groupOrder               GroupOrder @relation(fields: [groupOrderId], references: [id], onDelete: Cascade)
+  createdById              String     @map("created_by") @db.VarChar(36)
+  content                  String     @db.Text
+  bankInfo                 String?    @map("bank_info") @db.Text
+  qrDataUrl                String?    @map("qr_data_url") @db.Text
+  unpaidCount              Int        @default(0) @map("unpaid_count")
+  unpaidAmount             Int        @default(0) @map("unpaid_amount")
+  telegramMessageId        String?    @map("telegram_message_id") @db.VarChar(100)
+  paymentBankCode          String?    @map("payment_bank_code") @db.VarChar(50)
+  paymentAccountNumber     String?    @map("payment_account_number") @db.VarChar(50)
+  paymentAccountHolderName String?    @map("payment_account_holder_name") @db.VarChar(100)
+  paymentBranch            String?    @map("payment_branch") @db.VarChar(200)
+  paymentProfileSnapshotAt DateTime?  @map("payment_profile_snapshot_at")
+  sentAt                   DateTime   @default(now()) @map("sent_at")
+  createdAt                DateTime   @default(now()) @map("created_at")
 
   @@index([groupOrderId])
   @@map("group_order_payment_reminders")
@@ -442,4 +490,284 @@ model GroupOrderActivity {
   @@map("group_order_activities")
 }
 
+model UserVaultSecurity {
+  id             String    @id @default(cuid()) @db.VarChar(36)
+  userId         String    @unique @map("user_id") @db.VarChar(36)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pinHash        String    @map("pin_hash") @db.Text
+  pinLength      Int       @map("pin_length") @db.SmallInt // 4 hoặc 6
+  failedAttempts Int       @default(0) @map("failed_attempts")
+  lockedUntil    DateTime? @map("locked_until")
+  pinUpdatedAt   DateTime? @map("pin_updated_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
+  @@map("user_vault_security")
+}
+
+model Role {
+  id               String           @id @default(cuid()) @db.VarChar(36)
+  code             String           @unique @db.VarChar(50) // admin, pm, member, viewer, custom_...
+  name             String           @db.VarChar(100) // Tên vai trò hiển thị
+  description      String?          @db.Text // Mô tả trách nhiệm
+  isSystem         Boolean          @default(false) @map("is_system") // Vai trò hệ thống không được xóa tùy tiện
+  status           String           @default("active") @db.VarChar(20) // active, inactive
+  defaultScopeType String           @default("system") @map("default_scope_type") @db.VarChar(50) // system, project, department, assigned, personal
+  rolePermissions  RolePermission[]
+  userRoles        UserRole[]
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  @@map("access_roles")
+}
+
+model Permission {
+  id              String           @id @default(cuid()) @db.VarChar(36)
+  code            String           @unique @db.VarChar(100) // projects.list.view, projects.detail.edit, ...
+  name            String           @db.VarChar(150) // Nhãn tiếng Việt dễ hiểu
+  module          String           @db.VarChar(50) // projects, doc_links, staff, group_orders, vault, access, system
+  resource        String           @db.VarChar(50) // list, detail, members, requests, documents, ...
+  action          String           @db.VarChar(50) // view, create, edit, delete, manage, export, ...
+  description     String?          @db.Text
+  isSensitive     Boolean          @default(false) @map("is_sensitive") // Cờ quyền nhạy cảm (xóa dữ liệu, cấp quyền, cấu hình)
+  rolePermissions RolePermission[]
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  @@index([module])
+  @@map("access_permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(cuid()) @db.VarChar(36)
+  roleId       String     @map("role_id") @db.VarChar(36)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String     @map("permission_id") @db.VarChar(36)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("access_role_permissions")
+}
+
+model UserRole {
+  id         String   @id @default(cuid()) @db.VarChar(36)
+  userId     String   @map("user_id") @db.VarChar(36)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId     String   @map("role_id") @db.VarChar(36)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedBy String?  @map("assigned_by") @db.VarChar(36)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("access_user_roles")
+}
+
+model UserRoleScope {
+  id         String   @id @default(cuid()) @db.VarChar(36)
+  userId     String   @map("user_id") @db.VarChar(36)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scopeType  String   @map("scope_type") @db.VarChar(50) // system, project, department, assigned, personal
+  targetId   String?  @map("target_id") @db.VarChar(100) // ID của project hoặc tên department nếu theo cụ thể
+  targetName String?  @map("target_name") @db.VarChar(255) // Tên hiển thị (Tên dự án hoặc phòng ban)
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([scopeType])
+  @@map("access_user_scopes")
+}
+
+model AccessAuditLog {
+  id             String   @id @default(cuid()) @db.VarChar(36)
+  actorId        String?  @map("actor_id") @db.VarChar(36)
+  actorUsername  String?  @map("actor_username") @db.VarChar(100)
+  actorName      String?  @map("actor_name") @db.VarChar(255)
+  action         String   @db.VarChar(100) // assign_role, revoke_role, update_role_permissions, update_scope, ...
+  targetType     String   @map("target_type") @db.VarChar(50) // user, role, permission, scope
+  targetId       String?  @map("target_id") @db.VarChar(50)
+  targetName     String?  @map("target_name") @db.VarChar(255)
+  summary        String   @db.Text
+  beforeDataJson String?  @map("before_data_json") @db.Text
+  afterDataJson  String?  @map("after_data_json") @db.Text
+  ipAddress      String?  @map("ip_address") @db.VarChar(50)
+  userAgent      String?  @map("user_agent") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([actorId])
+  @@index([targetType])
+  @@index([action])
+  @@index([createdAt])
+  @@map("access_audit_logs")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Module: Ghi nhận Hỗ trợ (Support Tickets)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Danh mục nghiệp vụ (VD: Khám bệnh, Viện phí, BHXH, Dược, Xét nghiệm...)
+model SupportBusiness {
+  id        String   @id @default(cuid()) @db.VarChar(36)
+  code      String   @unique @db.VarChar(50)
+  name      String   @db.VarChar(150)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tickets SupportTicket[]
+
+  @@index([isActive, sortOrder])
+  @@map("support_businesses")
+}
+
+/// Danh mục phương thức hỗ trợ (VD: Zalo, Hotline, Remote, TeamViewer, Tại chỗ...)
+model SupportMethod {
+  id        String   @id @default(cuid()) @db.VarChar(36)
+  code      String   @unique @db.VarChar(50)
+  name      String   @db.VarChar(150)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ticketMethods SupportTicketMethod[]
+
+  @@index([isActive, sortOrder])
+  @@map("support_methods")
+}
+
+/// Danh mục loại hỗ trợ / khai báo (VD: Lỗi phần mềm, Cấu hình, Đào tạo, Yêu cầu mới...)
+model SupportType {
+  id        String   @id @default(cuid()) @db.VarChar(36)
+  code      String   @unique @db.VarChar(50)
+  name      String   @db.VarChar(150)
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tickets SupportTicket[]
+
+  @@index([isActive, sortOrder])
+  @@map("support_types")
+}
+
+/// Cấu hình ngưỡng phân nhóm thời gian xử lý (VD: <15 phút, 15-30 phút, ≥30 phút)
+model SupportTimeGroup {
+  id         String   @id @default(cuid()) @db.VarChar(36)
+  code       String   @unique @db.VarChar(50)
+  name       String   @db.VarChar(150) // VD: "Dưới 15 phút"
+  minSeconds Int      @map("min_seconds") // Giới hạn dưới (inclusive), tính bằng giây
+  maxSeconds Int?     @map("max_seconds") // Giới hạn trên (exclusive), null = không giới hạn
+  isActive   Boolean  @default(true) @map("is_active")
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tickets SupportTicket[]
+
+  @@index([isActive, sortOrder])
+  @@map("support_time_groups")
+}
+
+/// Bản ghi chính ca hỗ trợ
+model SupportTicket {
+  id                String    @id @default(cuid()) @db.VarChar(36)
+  ticketCode        String    @unique @map("ticket_code") @db.VarChar(20) // HT-00001
+  projectId         String    @map("project_id") @db.VarChar(36)
+  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requesterName     String    @map("requester_name") @db.VarChar(255) // Người dùng yêu cầu hỗ trợ (text)
+  createdById       String    @map("created_by") @db.VarChar(36)
+  createdByUser     User      @relation("TicketCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  assignedUserId    String    @map("assigned_user_id") @db.VarChar(36)
+  assignedUser      User      @relation("TicketAssignee", fields: [assignedUserId], references: [id], onDelete: Cascade)
+  businessId        String    @map("business_id") @db.VarChar(36)
+  business          SupportBusiness @relation(fields: [businessId], references: [id])
+  description       String    @db.Text // Mô tả vấn đề
+  cause             String?   @db.Text // Nguyên nhân
+  resolution        String?   @db.Text // Cách xử lý
+  sentAt            DateTime  @map("sent_at") // Thời điểm người dùng gửi yêu cầu
+  receivedAt        DateTime? @map("received_at") // Thời điểm nhân sự tiếp nhận
+  resolvedAt        DateTime? @map("resolved_at") // Thời điểm hoàn thành
+  processingSeconds Int?      @map("processing_seconds") // T_xử_lý = resolvedAt - receivedAt (giây)
+  totalSeconds      Int?      @map("total_seconds") // T_tổng = resolvedAt - sentAt (giây)
+  timeGroupId       String?   @map("time_group_id") @db.VarChar(36)
+  timeGroup         SupportTimeGroup? @relation(fields: [timeGroupId], references: [id])
+  supportTypeId     String?   @map("support_type_id") @db.VarChar(36)
+  supportType       SupportType? @relation(fields: [supportTypeId], references: [id])
+  status            String    @default("IN_PROGRESS") @db.VarChar(20) // IN_PROGRESS, COMPLETED
+  version           Int       @default(1) // Optimistic locking
+  idempotencyKey    String?   @unique @map("idempotency_key") @db.VarChar(64) // Chống tạo trùng
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  methods SupportTicketMethod[]
+  history SupportTicketHistory[]
+
+  @@index([projectId])
+  @@index([assignedUserId])
+  @@index([createdById])
+  @@index([businessId])
+  @@index([supportTypeId])
+  @@index([timeGroupId])
+  @@index([status])
+  @@index([sentAt])
+  @@index([ticketCode])
+  @@map("support_tickets")
+}
+
+/// Liên kết nhiều phương thức hỗ trợ với một ca (M:N pivot)
+model SupportTicketMethod {
+  id       String        @id @default(cuid()) @db.VarChar(36)
+  ticketId String        @map("ticket_id") @db.VarChar(36)
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  methodId String        @map("method_id") @db.VarChar(36)
+  method   SupportMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, methodId])
+  @@index([ticketId])
+  @@index([methodId])
+  @@map("support_ticket_methods")
+}
+
+/// Lịch sử tạo, sửa, chuyển trạng thái, phân công ca hỗ trợ
+model SupportTicketHistory {
+  id          String        @id @default(cuid()) @db.VarChar(36)
+  ticketId    String        @map("ticket_id") @db.VarChar(36)
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actorUserId String        @map("actor_user_id") @db.VarChar(36)
+  actorName   String?       @map("actor_name") @db.VarChar(255)
+  action      String        @db.VarChar(50) // created, updated, completed, reopened, assigned, status_changed
+  beforeData  String?       @map("before_data") @db.Text // JSON trước thay đổi
+  afterData   String?       @map("after_data") @db.Text // JSON sau thay đổi
+  reason      String?       @db.Text // Lý do (bắt buộc khi mở lại ca)
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  @@index([ticketId])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("support_ticket_history")
+}
+
+/// Lịch sử thay đổi danh mục Master Data hỗ trợ
+model SupportMasterDataHistory {
+  id             String   @id @default(cuid()) @db.VarChar(36)
+  masterDataType String   @map("master_data_type") @db.VarChar(50) // business, method, type, time_group
+  recordId       String   @map("record_id") @db.VarChar(36)
+  actorUserId    String   @map("actor_user_id") @db.VarChar(36)
+  actorName      String?  @map("actor_name") @db.VarChar(255)
+  beforeData     String?  @map("before_data") @db.Text
+  afterData      String?  @map("after_data") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([masterDataType, recordId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("support_master_data_history")
+}

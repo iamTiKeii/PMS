@@ -20,6 +20,8 @@ mys
 | 2.1           | 05/10/2026           | Lead BA                 | Chốt 100% quyết định nghiệp vụ và công nghệ Fullstack Next.js                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | **2.2** | **05/10/2026** | **Lead BA / Dev** | **Bổ sung tính năng Import Excel hàng loạt:**1. Kho Link Docs/Sheets (`POST /api/doc-links/import`).2. Danh mục Nhân sự (`POST /api/staff/import`).3. Két Mật khẩu Site (`POST /api/vault/accounts/import`) kèm tự động mã hóa AES-256-GCM.4. Component `ExcelImportModal` hỗ trợ tải file mẫu `.xlsx`, xem trước bảng dữ liệu và kiểm tra lỗi thời gian thực.                                                                                                                |
 | **2.3** | **05/10/2026** | **Lead BA / Dev** | **Mở rộng Import Excel toàn diện cho Quản lý Dự án & Quản trị Người dùng:**1. Dự án (`POST /api/projects/import`): Hỗ trợ import dự án kèm tự động giải quyết phân công nhân sự L1/L2/L3.2. Người dùng Tool (`POST /api/users/import`): Hỗ trợ import tài khoản, tự sinh mật khẩu bảo mật và liên kết hồ sơ nhân sự.3. Tối ưu bộ parser `ExcelImportModal`: Tự động loại bỏ dòng rỗng, chuẩn hóa ánh xạ cột không phân biệt chữ hoa thường. |
+| **2.4** | **10/10/2026** | **Lead Architect** | **Chuẩn hóa toàn diện Yêu cầu Phi Chức năng (NFR) cho toàn bộ hệ sinh thái PMS:** Quy chuẩn 10 nhóm yêu cầu phi chức năng (80+ mã NFR: PERF, UI, UX, SEC, REL, COMP, MAIN, INT, DATA, OPS), tích hợp sâu quy tắc Két PIN, Quản lý yêu cầu (QLYC), Đơn đặt nhóm, múi giờ Việt Nam Asia/Ho_Chi_Minh cho tác vụ nền Telegram, ma trận nghiệm thu và lộ trình ưu tiên triển khai 3 pha. |
+
 
 ---
 
@@ -608,38 +610,232 @@ Mật khẩu site dự án là tài sản tối mật. Để hiển thị mật 
 
 ---
 
-## 9. YÊU CẦU PHI CHỨC NĂNG (NFR THEO CHUẨN ISO/IEC 25010)
+## 9. YÊU CẦU PHI CHỨC NĂNG TOÀN HỆ THỐNG PMS (NON-FUNCTIONAL REQUIREMENTS - NFR)
 
-### 9.1 Bảo mật & An toàn Thông tin (Security)
+### 9.1 Hiệu suất Hệ thống (Performance)
+**Mục tiêu:** Đảm bảo hệ thống phản hồi nhanh, xử lý ổn định khi nhiều nhân sự sử dụng đồng thời và không gây gián đoạn công việc.
 
-- **NFR-SEC-01 (Lưu trữ Mật khẩu Đăng nhập):** Sử dụng thuật toán băm Argon2id (hoặc `bcrypt` với cost factor $\ge 12$) kèm cryptographic salt ngẫu nhiên $\ge 16$ bytes cho từng User.
-- **NFR-SEC-02 (Mã hóa Két Thông tin Xác thực):** Toàn bộ mật khẩu site trong bảng `staff_accounts` bắt buộc mã hóa bằng thuật toán đối xứng **AES-256-GCM**. Mỗi bản ghi sử dụng 1 Initialization Vector (IV) ngẫu nhiên 12 bytes. Master Key được cung cấp qua biến môi trường của hệ điều hành, cấm lưu trong database hoặc git repository.
-- **NFR-SEC-03 (Bảo vệ Phiên làm việc):** Cookie chứa refresh token bắt buộc có cờ `HttpOnly`, `Secure`, và `SameSite=Strict`. Access Token lưu trong bộ nhớ tạm (In-memory) của ứng dụng web, tuyệt đối không lưu trong `localStorage` để phòng tránh tấn công XSS đánh cắp token.
-- **NFR-SEC-04 (Chống tấn công Phổ biến OWASP):** 100% câu truy vấn CSDL sử dụng Parameterized Query / ORM để triệt tiêu SQL Injection; toàn bộ output ra màn hình được escape HTML để chống Stored/Reflected XSS.
-- **NFR-SEC-05 (Giới hạn Tần suất Rate Limiting):** Cấu hình rate limit trên Nginx / API Gateway: Tối đa 5 lần thử đăng nhập / IP / phút; tối đa 120 API requests / User / phút.
+| Mã | Yêu cầu | Mô tả chi tiết |
+| :--- | :--- | :--- |
+| **PERF-01** | Thời gian tải trang | Các trang thông thường như trang chủ, danh sách dự án, danh sách yêu cầu và danh sách thông báo nên tải trong vòng 2 giây trong điều kiện vận hành bình thường. |
+| **PERF-02** | Thời gian xử lý thao tác | Các thao tác xem chi tiết, tạo mới, cập nhật và lưu dữ liệu nên hoàn thành trong vòng 2 giây, không tính thời gian xử lý của dịch vụ bên ngoài. |
+| **PERF-03** | Tải dữ liệu lớn | Các danh sách có nhiều bản ghi phải hỗ trợ phân trang hoặc tải dữ liệu theo nhu cầu, tránh tải toàn bộ dữ liệu cùng lúc. |
+| **PERF-04** | Tìm kiếm và lọc | Tìm kiếm theo từ khóa, trạng thái, nhân sự, dự án và khoảng thời gian phải phản hồi nhanh; mục tiêu đề xuất không quá 2 giây với dữ liệu thông thường. |
+| **PERF-05** | Xử lý đồng thời | Hệ thống phải đáp ứng nhiều người dùng đồng thời mà không làm sai lệch dữ liệu hoặc gây giảm hiệu suất nghiêm trọng. |
+| **PERF-06** | Tác vụ nền | Các tác vụ gửi Telegram, nhắc hạn, nhắc chấm công và đồng bộ dữ liệu phải chạy nền, không làm người dùng phải chờ giao diện xử lý xong. |
+| **PERF-07** | Hiển thị thông báo | Thông báo mới phải được cập nhật trong khoảng thời gian hợp lý; thời gian thực tế phụ thuộc cơ chế cập nhật và dịch vụ tích hợp. |
+| **PERF-08** | Tài nguyên hệ thống | Truy vấn cơ sở dữ liệu, bộ nhớ đệm và tài nguyên máy chủ cần được tối ưu để hạn chế tiêu thụ tài nguyên không cần thiết. |
+| **PERF-09** | Phản hồi thao tác | Khi thao tác đang được xử lý, giao diện phải hiển thị trạng thái loading để người dùng biết hệ thống đang hoạt động. |
+| **PERF-10** | Khả năng mở rộng | Kiến trúc cần cho phép tăng số lượng người dùng, dự án, yêu cầu và thông báo mà không phải thiết kế lại toàn bộ hệ thống. |
 
-### 9.2 Hiệu năng & Khả năng Chịu tải (Performance Efficiency)
-
-- **NFR-PRF-01 (Thời gian phản hồi API):** Phản hồi $95\%$ các API truy vấn danh sách (có phân trang) trong thời gian dưới $300\text{ ms}$ ở điều kiện tải thông thường.
-- **NFR-PRF-02 (Tải trang):** Thời gian tải trang ban đầu (First Contentful Paint) dưới $1.5\text{ giây}$.
-- **NFR-PRF-03 (Quy mô dữ liệu):** Thiết kế database và index đảm bảo hoạt động mượt mà khi hệ thống đạt ngưỡng $50.000$ link tài liệu, $10.000$ tài khoản site và $1.000.000$ bản ghi audit log.
-- **NFR-PRF-04 (Tải đồng thời):** Hỗ trợ tối thiểu 50 người dùng tương tác đồng thời mà CPU máy chủ không vượt quá $60\%$ và RAM không vượt quá $70\%$.
-
-### 9.3 Độ tin cậy & Tính Sẵn sàng (Reliability & Availability)
-
-- **NFR-REL-01 (SLA Thời gian hoạt động):** Cam kết độ khả dụng hệ thống $\ge 99.5\%$ trong khung giờ làm việc tiêu chuẩn.
-- **NFR-REL-02 (Mục tiêu Sao lưu & Phục hồi):**
-  - RPO (Recovery Point Objective): $\le 4\text{ giờ}$ (Snapshot cơ sở dữ liệu tự động 4 tiếng/lần).
-  - RTO (Recovery Time Objective): $\le 1\text{ giờ}$ (Thời gian dựng lại hệ thống mới từ bản backup khi gặp sự cố phần cứng).
-  - Bản sao lưu phải được tự động mã hóa và đẩy về vùng lưu trữ đám mây biệt lập.
-
-### 9.4 Trải nghiệm Người dùng & Khả năng Sử dụng (Usability)
-
-- **NFR-USB-01 (Tối ưu Thao tác):** Cung cấp phím tắt tìm kiếm nhanh toàn hệ thống (`Ctrl + K` / `Cmd + K`) cho phép tìm kiếm tức thì link docs hoặc dự án.
-- **NFR-USB-02 (Bảo vệ Clipboard):** Sau khi người dùng bấm "Copy Link" hoặc "Copy Mật khẩu", hệ thống tự động xóa nội dung nhạy cảm trong Clipboard sau 30 giây để tránh bị lộ qua các phần mềm khác.
-- **NFR-USB-03 (Tương thích Trình duyệt):** Hiển thị hoàn chỉnh và không vỡ layout trên Chrome, Edge, Safari, Firefox phiên bản mới trong 2 năm trở lại đây.
+*Lưu ý:* Các mốc 2 giây là mục tiêu đề xuất ban đầu, cần kiểm thử tải để xác nhận theo số lượng người dùng đồng thời và dung lượng dữ liệu thực tế.
 
 ---
+
+### 9.2 Giao diện Người dùng (UI — User Interface)
+**Mục tiêu:** Xây dựng giao diện nhất quán, dễ quan sát, dễ thao tác và phù hợp với môi trường làm việc nội bộ.
+
+| Mã | Yêu cầu | Mô tả chi tiết |
+| :--- | :--- | :--- |
+| **UI-01** | Tính nhất quán | Các trang sử dụng thống nhất màu sắc, kiểu chữ, khoảng cách, nút bấm, biểu mẫu, bảng dữ liệu và hộp thoại. |
+| **UI-02** | Bố cục tổng thể | Các khu vực điều hướng, nội dung chính, thông báo và thông tin người dùng được bố trí rõ ràng, nhất quán. |
+| **UI-03** | Điều hướng | Menu được phân nhóm theo nghiệp vụ; người dùng dễ xác định vị trí hiện tại và chuyển đổi giữa các chức năng. |
+| **UI-04** | Danh sách dữ liệu | Các bảng phải có tiêu đề cột rõ ràng, căn chỉnh hợp lý, trạng thái dễ nhận biết và hỗ trợ phân trang khi cần. |
+| **UI-05** | Biểu mẫu | Các trường nhập liệu phải có nhãn, định dạng phù hợp, chỉ rõ trường bắt buộc và cách nhập dữ liệu. |
+| **UI-06** | Trạng thái nghiệp vụ | Trạng thái như mới tạo, đang xử lý, hoàn thành, quá hạn hoặc đã đóng phải được thể hiện dễ phân biệt. |
+| **UI-07** | Phản hồi thao tác | Các thao tác thành công, thất bại hoặc cần xác nhận phải có thông báo phù hợp, không chỉ dựa vào thay đổi màu sắc. |
+| **UI-08** | Trạng thái loading | Các thao tác tải trang, lưu dữ liệu, tìm kiếm, gửi yêu cầu và xử lý nghiệp vụ cần có trạng thái chờ phù hợp. |
+| **UI-09** | Dữ liệu nhạy cảm | Mật khẩu, mã PIN và thông tin nhạy cảm phải được hiển thị theo đúng quyền truy cập; mật khẩu được che mặc định. |
+| **UI-10** | Thiết kế đáp ứng | Giao diện phải hoạt động trên máy tính, máy tính bảng và điện thoại ở mức phù hợp với nghiệp vụ. |
+| **UI-11** | Khả năng đọc | Cỡ chữ, độ tương phản, khoảng cách và độ dài nội dung phải hỗ trợ việc đọc dữ liệu trong thời gian dài. |
+| **UI-12** | Trạng thái rỗng và lỗi | Các màn hình phải có hướng dẫn khi chưa có dữ liệu, không có kết quả tìm kiếm hoặc xảy ra lỗi tải dữ liệu. |
+
+**Áp dụng trên các phân hệ PMS:**
+- **Trang chủ:** Tổng hợp thông báo, công việc cần xử lý, yêu cầu sắp đến hạn và các thông tin quan trọng.
+- **Quản lý dự án:** Hiển thị thông tin dự án, nhân sự đầu mối, tài khoản dự án và các yêu cầu liên quan.
+- **Quản lý yêu cầu (QLYC):** Dễ theo dõi mã yêu cầu, người tạo, người xử lý, người theo dõi, hạn xử lý, trạng thái và lịch sử cập nhật.
+- **Quản lý thông báo:** Phân biệt thông báo mới và đã đọc; hiển thị thời gian và nội dung liên quan.
+- **Quản lý đơn đặt nhóm:** Thể hiện trạng thái mở/đóng đơn, danh sách thành viên đặt món và trạng thái thanh toán.
+- **Quản lý thông tin cá nhân:** Bố trí rõ ràng thông tin nhân sự, thông tin tài khoản ngân hàng và các thiết lập bảo mật.
+- **Két lưu trữ tài khoản:** Che mật khẩu mặc định, xác thực PIN khi cần và thông báo rõ lý do không được phép xem.
+
+---
+
+### 9.3 Trải nghiệm Người dùng (UX — User Experience)
+**Mục tiêu:** Giúp nhân sự hoàn thành công việc với ít thao tác, ít sai sót và dễ hiểu quy trình nghiệp vụ.
+
+| Mã | Yêu cầu | Mô tả chi tiết |
+| :--- | :--- | :--- |
+| **UX-01** | Dễ sử dụng | Người dùng có thể hiểu cách sử dụng các chức năng chính mà không cần đào tạo quá nhiều. |
+| **UX-02** | Giảm thao tác | Tự động điền các thông tin có thể lấy từ hồ sơ người dùng, dự án hoặc dữ liệu đã lưu. |
+| **UX-03** | Nhất quán nghiệp vụ | Các thao tác tạo, sửa, xem chi tiết, tìm kiếm và xác nhận phải có cách vận hành tương tự giữa các phân hệ. |
+| **UX-04** | Bảo toàn dữ liệu nhập | Khi xảy ra lỗi xác thực hoặc lỗi máy chủ, dữ liệu đã nhập nên được giữ lại khi an toàn và phù hợp. |
+| **UX-05** | Xác nhận hành động quan trọng | Các thao tác có hậu quả khó khôi phục như đóng đơn, xóa dữ liệu hoặc thay đổi quyền truy cập phải có bước xác nhận. |
+| **UX-06** | Thông báo dễ hiểu | Thông báo lỗi cần giải thích nguyên nhân có thể xảy ra và hướng xử lý, tránh chỉ hiển thị mã lỗi kỹ thuật. |
+| **UX-07** | Theo dõi tiến trình | Người dùng dễ nhận biết công việc đang ở trạng thái nào, ai đang phụ trách và bước tiếp theo là gì. |
+| **UX-08** | Hỗ trợ tra cứu | Các chức năng tìm kiếm, lọc, sắp xếp và xem lịch sử phải giúp người dùng nhanh chóng tìm được thông tin cần thiết. |
+| **UX-09** | Hạn chế nhập trùng | Ưu tiên chọn từ danh sách dữ liệu có sẵn và tự động liên kết nhân sự, dự án, người xử lý hoặc người nhận thanh toán. |
+| **UX-10** | Loading và chống thao tác lặp | Trong khi đang gửi yêu cầu, nút thao tác cần được kiểm soát phù hợp để tránh gửi lặp hoặc tạo dữ liệu trùng. |
+| **UX-11** | Hỗ trợ người dùng | Khi thao tác thất bại, hệ thống cần hướng dẫn người dùng thử lại, kiểm tra dữ liệu hoặc liên hệ quản trị viên khi cần. |
+| **UX-12** | Lịch sử thao tác | Với nghiệp vụ cần truy vết, người dùng có quyền phù hợp phải xem được thời gian, người thực hiện và nội dung thay đổi. |
+
+**Ví dụ trải nghiệm theo nghiệp vụ:**
+- **QLYC:** Khi chọn người xử lý, hệ thống hỗ trợ tìm nhân sự; khi yêu cầu gần đến hạn, hệ thống nhắc đúng người có liên quan.
+- **Thông báo:** Khi nhấn vào thông báo, hệ thống đưa người dùng đến đúng yêu cầu hoặc dự án liên quan.
+- **Đơn đặt nhóm:** Thành viên dễ thêm món; người tạo đơn dễ đóng đơn sau khi nhận đủ thông tin; trạng thái thanh toán rõ ràng.
+- **Thông tin ngân hàng:** Khi tạo nội dung nhắc thanh toán, hệ thống tự điền thông tin người nhận đã lưu, hạn chế nhập nhầm số tài khoản.
+- **Két tài khoản:** Nếu chưa thiết lập PIN, hệ thống hướng dẫn thiết lập thay vì chỉ từ chối xem mật khẩu.
+- **Chấm công:** Các nhắc nhở được gửi đúng thời điểm, hạn chế gây phiền bởi thông báo lặp hoặc không liên quan.
+
+---
+
+### 9.4 Bảo mật và Phân quyền (Security)
+**Mục tiêu:** Bảo vệ dữ liệu nội bộ, thông tin nhân sự, thông tin tài khoản dự án và đảm bảo mỗi người chỉ truy cập được dữ liệu theo quyền được cấp.
+
+| Mã | Yêu cầu | Mô tả chi tiết |
+| :--- | :--- | :--- |
+| **SEC-01** | Xác thực người dùng | Các chức năng nội bộ phải yêu cầu đăng nhập, ngoại trừ các điểm truy cập công khai được phê duyệt rõ ràng. |
+| **SEC-02** | Phân quyền | Quyền xem, tạo, sửa, xóa, phê duyệt và quản trị phải được kiểm tra tại máy chủ, không chỉ ẩn nút trên giao diện. |
+| **SEC-03** | Phân quyền theo dữ liệu | Các dữ liệu như tài khoản dự án, yêu cầu và thông tin cá nhân phải được bảo vệ theo phạm vi truy cập được quy định. |
+| **SEC-04** | Bảo vệ thông tin đăng nhập | Mật khẩu đăng nhập không được lưu dưới dạng văn bản thuần; thông tin xác thực cần được bảo vệ phù hợp (Bcrypt/Argon2id). |
+| **SEC-05** | Bảo vệ dữ liệu Két | Mật khẩu tài khoản dự án phải được mã hóa khi lưu (AES-256-GCM kèm IV/Tag); chỉ giải mã khi người dùng được phép truy cập. |
+| **SEC-06** | Bảo vệ PIN | PIN phải được băm an toàn, kiểm tra tại máy chủ và có giới hạn số lần nhập sai (khóa tạm 15 phút sau 5 lần). |
+| **SEC-07** | Quản lý phiên đăng nhập | Phiên đăng nhập phải được quản lý an toàn, có cơ chế hết hạn và đăng xuất (HttpOnly Cookie, SameSite). |
+| **SEC-08** | Chống truy cập trái phép | Máy chủ phải kiểm tra quyền trên từng yêu cầu, hạn chế truy cập bằng cách sửa URL, ID hoặc dữ liệu gửi từ trình duyệt (chống IDOR). |
+| **SEC-09** | Ghi nhật ký kiểm toán | Ghi nhận các thao tác quan trọng như thay đổi quyền, thay đổi mật khẩu, cập nhật yêu cầu và các hành động quản trị; không ghi lại mật khẩu hoặc PIN. |
+| **SEC-10** | Bảo vệ kết nối | Sử dụng HTTPS cho các kết nối có truyền dữ liệu nhạy cảm. |
+| **SEC-11** | Quản lý bí mật tích hợp | Token Telegram, API key và thông tin kết nối cơ sở dữ liệu phải được quản lý qua cấu hình bí mật, không đưa vào mã nguồn công khai. |
+| **SEC-12** | Kiểm soát dữ liệu xuất | Việc xuất hoặc chia sẻ dữ liệu nhạy cảm phải tuân theo quyền truy cập và chính sách nội bộ. |
+
+---
+
+### 9.5 Tính Ổn định và Khả năng Sẵn sàng (Reliability & Availability)
+**Mục tiêu:** Hệ thống hoạt động ổn định, hạn chế mất dữ liệu và phục hồi được khi xảy ra sự cố.
+
+| Mã | Yêu cầu | Mô tả chi tiết |
+| :--- | :--- | :--- |
+| **REL-01** | Tính toàn vẹn dữ liệu | Các thao tác cập nhật dữ liệu liên quan phải được xử lý nhất quán (Prisma Database Transactions), tránh lưu một phần khi nghiệp vụ yêu cầu giao dịch đồng bộ. |
+| **REL-02** | Xử lý lỗi | Lỗi từ máy chủ, cơ sở dữ liệu hoặc dịch vụ bên ngoài phải được xử lý có kiểm soát, không làm sập toàn bộ hệ thống. |
+| **REL-03** | Chống tạo dữ liệu trùng | Các thao tác có thể được gửi lại do mạng chậm hoặc người dùng nhấn nhiều lần phải có cơ chế hạn chế bản ghi trùng phù hợp. |
+| **REL-04** | Sao lưu dữ liệu | Cơ sở dữ liệu phải được sao lưu định kỳ theo chính sách vận hành (Snapshot hàng ngày/mỗi 4 giờ). |
+| **REL-05** | Khôi phục dữ liệu | Phải có quy trình kiểm tra và khôi phục từ bản sao lưu khi xảy ra mất mát hoặc hỏng dữ liệu. |
+| **REL-06** | Theo dõi hoạt động | Cần theo dõi tình trạng ứng dụng, cơ sở dữ liệu, các tác vụ nền và lỗi tích hợp. |
+| **REL-07** | Tính độc lập của phân hệ | Lỗi ở chức năng gửi Telegram không nên làm gián đoạn các chức năng chính như tạo yêu cầu hoặc cập nhật dự án. |
+| **REL-08** | Khả năng phục hồi | Hệ thống cần có quy trình xử lý sau sự cố và xác định mục tiêu thời gian khôi phục (RTO $\le 1h$, RPO $\le 4h$). |
+
+*Mức sẵn sàng:* Đặt mục tiêu $\ge 99.5\%$ mỗi tháng trong khung giờ làm việc tiêu chuẩn.
+
+---
+
+### 9.6 Tính Tương thích và Khả năng Truy cập (Compatibility & Accessibility)
+
+| Mã | Yêu cầu | Mô tả chi tiết |
+| :--- | :--- | :--- |
+| **COMP-01** | Trình duyệt | Hỗ trợ các phiên bản ổn định gần đây của Chrome, Edge, Firefox, Safari. |
+| **COMP-02** | Thiết bị | Giao diện hoạt động phù hợp trên máy tính để bàn, laptop, máy tính bảng và điện thoại. |
+| **COMP-03** | Độ phân giải | Nội dung không bị che khuất, tràn hoặc khó thao tác ở các kích thước màn hình phổ biến. |
+| **COMP-04** | Khả năng truy cập | Các nút, biểu mẫu và thông báo cần có nhãn rõ ràng, có thể sử dụng bằng bàn phím ở các chức năng chính. |
+| **COMP-05** | Định dạng dữ liệu | Ngày giờ, tiền tệ và số liệu phải thống nhất theo quy ước sử dụng tại Việt Nam (`DD/MM/YYYY`, `VND`). |
+| **COMP-06** | Tiếng Việt | Hỗ trợ tiếng Việt có dấu, không lỗi font và không làm sai dữ liệu khi nhập, tìm kiếm hoặc xuất. |
+
+---
+
+### 9.7 Khả năng Bảo trì và Mở rộng (Maintainability & Scalability)
+
+| Mã | Yêu cầu | Mô tả chi tiết |
+| :--- | :--- | :--- |
+| **MAIN-01** | Cấu trúc hệ thống | Mã nguồn cần được tổ chức rõ ràng theo chức năng hoặc phân hệ, hạn chế phụ thuộc chặt chẽ giữa các phần. |
+| **MAIN-02** | Cấu hình nghiệp vụ | Các giá trị có khả năng thay đổi như tiền tố mã QLYC, thời điểm nhắc việc và cấu hình tích hợp nên được quản lý qua cấu hình phù hợp. |
+| **MAIN-03** | Khả năng mở rộng | Có thể bổ sung phân hệ, trường dữ liệu và quy trình mới mà không ảnh hưởng không cần thiết đến các chức năng hiện có. |
+| **MAIN-04** | Quản lý phiên bản dữ liệu | Các thay đổi cấu trúc cơ sở dữ liệu phải có cơ chế quản lý phiên bản qua Prisma Migrations / schema versioning. |
+| **MAIN-05** | Kiểm thử | Các nghiệp vụ quan trọng phải có kiểm thử phù hợp, đặc biệt là phân quyền, dữ liệu nhạy cảm và các luồng cập nhật trạng thái. |
+| **MAIN-06** | Quản lý lỗi | Lỗi cần có mã hoặc thông tin định danh để hỗ trợ truy vết, nhưng không làm lộ dữ liệu nội bộ. |
+| **MAIN-07** | Triển khai | Có quy trình triển khai, kiểm tra sau triển khai và phương án quay lại phiên bản ổn định khi cần. |
+| **MAIN-08** | Tài liệu | Các chức năng chính, cấu hình, quy tắc phân quyền và quy trình xử lý sự cố phải có tài liệu cập nhật. |
+
+---
+
+### 9.8 Tích hợp và Thông báo (Integration)
+
+| Mã | Yêu cầu | Mô tả chi tiết |
+| :--- | :--- | :--- |
+| **INT-01** | Tính ổn định của tích hợp | Lỗi từ Telegram hoặc dịch vụ bên ngoài không được làm hỏng dữ liệu nghiệp vụ đã lưu. |
+| **INT-02** | Gửi lại thông báo | Các thông báo quan trọng bị lỗi tạm thời cần có cơ chế thử gửi lại với giới hạn phù hợp (Retry / Exponential backoff). |
+| **INT-03** | Chống gửi trùng | Một sự kiện không được tạo ra nhiều thông báo giống nhau ngoài dự kiến khi tác vụ được chạy lại (khóa unique trên `reminder_logs`). |
+| **INT-04** | Lịch nhắc việc | Các tác vụ nhắc hạn QLYC, nhắc chấm công và thông báo theo lịch phải tuân theo múi giờ cấu hình: **`Asia/Ho_Chi_Minh`** (UTC+7). |
+| **INT-05** | Trạng thái gửi | Với thông báo quan trọng, hệ thống lưu trạng thái chờ gửi, gửi thành công hoặc thất bại trong bảng `notification_deliveries` để phục vụ kiểm tra. |
+| **INT-06** | Bảo vệ nội dung | Không gửi mật khẩu, PIN hoặc dữ liệu nhạy cảm lên nhóm Telegram nếu không có yêu cầu nghiệp vụ và biện pháp bảo vệ được phê duyệt. |
+
+---
+
+### 9.9 Quy tắc Dữ liệu và Tính Nhất quán Nghiệp vụ (Data Integrity)
+
+| Mã | Yêu cầu | Mô tả chi tiết |
+| :--- | :--- | :--- |
+| **DATA-01** | Kiểm tra dữ liệu | Dữ liệu đầu vào phải được kiểm tra hợp lệ ở cả giao diện và máy chủ (Client validation & Server Schema validation). |
+| **DATA-02** | Ràng buộc dữ liệu | Mã yêu cầu, tài khoản, nhân sự và các thông tin có tính duy nhất phải có ràng buộc phù hợp (`unique` constraints). |
+| **DATA-03** | Lịch sử thay đổi | Những nghiệp vụ cần truy vết phải lưu được người thực hiện, thời gian và nội dung thay đổi. |
+| **DATA-04** | Nhất quán trạng thái | Các chuyển đổi trạng thái phải tuân thủ quy tắc nghiệp vụ, không cho phép chuyển trạng thái không hợp lệ. |
+| **DATA-05** | Lưu trữ và lưu giữ | Xác định thời gian lưu giữ dữ liệu, quy tắc lưu trữ và quy trình xử lý dữ liệu hết thời hạn. |
+| **DATA-06** | Xử lý xóa | Các dữ liệu có liên quan đến lịch sử công việc hoặc kiểm toán áp dụng Soft Delete (`deletedAt`), không xóa vật lý làm mất dấu vết. |
+
+---
+
+### 9.10 Khả năng Kiểm thử và Giám sát Vận hành (Operations & Monitoring)
+
+| Mã | Yêu cầu | Mô tả chi tiết |
+| :--- | :--- | :--- |
+| **OPS-01** | Giám sát lỗi | Có thể phát hiện lỗi máy chủ, lỗi truy vấn và lỗi tích hợp quan trọng. |
+| **OPS-02** | Nhật ký vận hành | Nhật ký cần có thời gian, loại lỗi và thông tin truy vết phù hợp; không chứa bí mật xác thực. |
+| **OPS-03** | Kiểm thử hồi quy | Khi bổ sung chức năng mới, phải kiểm tra để hạn chế ảnh hưởng đến các chức năng đã hoạt động. |
+| **OPS-04** | Kiểm thử phân quyền | Kiểm tra cả trường hợp được phép và không được phép truy cập dữ liệu (RBAC & RLS). |
+| **OPS-05** | Kiểm thử tải | Đánh giá hiệu suất với số lượng người dùng đồng thời và lượng dữ liệu dự kiến. |
+| **OPS-06** | Cảnh báo vận hành | Có cơ chế cảnh báo khi tác vụ nền ngừng hoạt động, gửi thông báo thất bại kéo dài hoặc hệ thống có lỗi nghiêm trọng. |
+
+---
+
+### 9.11 Tiêu chí Nghiệm thu Phi Chức năng (NFR Acceptance Criteria)
+
+| Nhóm | Tiêu chí nghiệm thu đề xuất |
+| :--- | :--- |
+| **Hiệu suất** | Các thao tác phổ biến đạt thời gian phản hồi mục tiêu ($\le 2s$) trong kịch bản kiểm thử đã thống nhất. |
+| **Giao diện** | Các phân hệ dùng chung quy chuẩn giao diện; có trạng thái loading, lỗi, thành công và dữ liệu rỗng phù hợp. |
+| **Trải nghiệm** | Người dùng hoàn thành được các luồng nghiệp vụ chính mà không gặp bước nhập liệu thừa hoặc thông báo khó hiểu. |
+| **Bảo mật** | Người dùng không thể truy cập dữ liệu ngoài phạm vi quyền bằng cách sửa URL, ID hoặc gửi API trực tiếp. |
+| **Tính ổn định** | Lỗi dịch vụ tích hợp không làm mất dữ liệu nghiệp vụ đã lưu. |
+| **Sao lưu** | Có thể khôi phục dữ liệu theo quy trình đã kiểm thử. |
+| **Tương thích** | Các chức năng chính hoạt động trên trình duyệt và thiết bị nằm trong phạm vi hỗ trợ. |
+| **Bảo trì** | Có tài liệu cấu hình, quy trình triển khai, nhật ký lỗi và kiểm thử hồi quy cho nghiệp vụ quan trọng. |
+| **Tích hợp** | Tác vụ nhắc việc tuân thủ lịch (`Asia/Ho_Chi_Minh`); có khả năng theo dõi và xử lý thông báo thất bại. |
+| **Dữ liệu** | Các trạng thái, mã định danh và dữ liệu liên quan được lưu nhất quán theo quy tắc nghiệp vụ. |
+
+---
+
+### 9.12 Thứ tự Ưu tiên Triển khai (Implementation Phasing)
+
+1. **Ưu tiên 1 — Bắt buộc (Must-Have):**
+   - Bảo mật và phân quyền máy chủ (SEC-02, SEC-08).
+   - Tính toàn vẹn dữ liệu qua transactions (REL-01, DATA-04).
+   - Kiểm soát lỗi và phản hồi thao tác thân thiện (REL-02, UX-06).
+   - Sao lưu dữ liệu định kỳ (REL-04).
+   - Xác thực đầu vào Client & Server (DATA-01).
+   - Xử lý trạng thái loading và chống click đúp (UI-08, UX-10).
+
+2. **Ưu tiên 2 — Quan trọng (Should-Have):**
+   - Hiệu suất truy vấn và phân trang (PERF-03, PERF-08).
+   - Tìm kiếm và lọc mượt mà (PERF-04).
+   - Giao diện nhất quán và tối ưu responsive trên điện thoại (UI-01, UI-10).
+   - Nhật ký kiểm toán bất biến (SEC-09).
+   - Cơ chế ghi nhận và gửi lại thông báo thất bại (INT-02, INT-05).
+
+3. **Ưu tiên 3 — Phát triển lâu dài (Nice-to-Have):**
+   - Kiến trúc mở rộng quy mô lớn (PERF-10, MAIN-03).
+   - Cấu hình linh hoạt các sự kiện và lịch trình (MAIN-02).
+   - Giám sát vận hành tự động và cảnh báo tức thì (OPS-01, OPS-06).
+   - Tối ưu bộ nhớ đệm và tự động hóa kiểm thử hồi quy (OPS-03, OPS-05).
+
+---
+
 
 ## 10. MA TRẬN KIỂM THỬ & CA KIỂM THỬ TRỌNG YẾU (TEST CASES)
 

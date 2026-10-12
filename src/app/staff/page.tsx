@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 import {
   Users2,
   Search,
@@ -21,15 +22,30 @@ import {
   Calendar,
   Sparkles,
 } from "lucide-react";
-import { formatShortDate } from "@/lib/utils";
 import { ExcelImportModal, ColumnDefinition } from "@/components/ExcelImportModal";
+import { Pagination, usePagination } from "@/components/Pagination";
+import { TableRowSkeleton } from "@/components/Skeleton";
 
 export default function StaffPage() {
   const { success, error, toast } = useToast();
+  const { confirm } = useConfirm();
   const [staffList, setStaffList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Pagination hook
+  const {
+    page: staffPage,
+    offset: staffOffset,
+    goToPage: setStaffPage,
+  } = usePagination({
+    totalItems: staffList.length,
+    pageSize: 15,
+    filterDeps: [search, statusFilter],
+  });
+
+  const paginatedStaff = staffList.slice(staffOffset, staffOffset + 15);
 
   // Add / Edit Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -197,9 +213,13 @@ export default function StaffPage() {
   };
 
   const handleDelete = async (s: any) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa hồ sơ nhân sự "${s.fullName}" không?`)) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Xóa hồ sơ nhân sự?",
+      message: `Bạn có chắc chắn muốn xóa hồ sơ nhân sự "${s.fullName}" không? Hành động này sẽ chuyển trạng thái nhân sự sang đã xóa.`,
+      confirmText: "Xóa nhân sự",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/staff/${s.id}`, { method: "DELETE" });
@@ -216,47 +236,47 @@ export default function StaffPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#060913] bg-cyber-grid">
+    <div className="flex-1 flex flex-col min-w-0 bg-[#F1F3F6] min-h-screen">
       <Header
         title="Danh bạ Nhân sự"
-        subtitle="Quản lý thông tin nhân viên, phòng ban và phân công dự án"
+        subtitle="Quản trị thông tin nhân viên, phòng ban chuyên môn và phân công dự án L1/L2/L3"
         actionButton={
           isAdmin ? (
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setImportModalOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all border border-slate-800 shadow-md"
+                className="px-3 py-1.5 rounded-md bg-white hover:bg-[#F8FAFC] text-[#172033] font-medium text-xs flex items-center gap-1.5 transition-colors border border-[#DDE2E9] shadow-xs"
               >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <FileSpreadsheet className="w-3.5 h-3.5 text-[#15803D]" />
                 <span>Import Excel</span>
               </button>
               <button
                 onClick={openAddModal}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-1.5 transition-all"
+                className="px-3.5 py-1.5 rounded-md bg-[#2457A7] hover:bg-[#1C4585] text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors"
               >
-                <Plus className="w-4 h-4" />
-                <span>Thêm Nhân sự mới</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Thêm nhân sự</span>
               </button>
             </div>
           ) : null
         }
       />
 
-      <div className="p-6 md:p-8 space-y-6 max-w-7xl w-full mx-auto">
+      <div className="p-6 md:p-8 space-y-5 max-w-7xl w-full mx-auto">
         {/* Search & Status Filter */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-3xl bg-slate-900/80 border border-slate-800/80 shadow-xl backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-lg bg-white border border-[#DDE2E9] shadow-xs">
           <div className="relative w-full sm:w-80">
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm theo họ tên, mã nhân viên, email, phòng ban..."
-              className="w-full px-4 py-2.5 pl-10 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
+              className="w-full px-3 py-1.5 pl-9 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7]"
             />
-            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-[#94A3B8] absolute left-3 top-2.5" />
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800">
+          <div className="flex items-center gap-1.5 self-end sm:self-auto">
             {[
               { id: "all", label: "Tất cả" },
               { id: "working", label: "Đang làm việc" },
@@ -265,10 +285,10 @@ export default function StaffPage() {
               <button
                 key={st.id}
                 onClick={() => setStatusFilter(st.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                   statusFilter === st.id
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                    ? "bg-[#2457A7] text-white shadow-xs font-semibold"
+                    : "bg-white text-[#64748B] hover:bg-[#F8FAFC] border border-[#DDE2E9]"
                 }`}
               >
                 {st.label}
@@ -278,125 +298,113 @@ export default function StaffPage() {
         </div>
 
         {/* Staff Table */}
-        <div className="rounded-3xl bg-slate-900/80 border border-slate-800/80 overflow-hidden shadow-2xl backdrop-blur-xl">
+        <div className="rounded-lg bg-white border border-[#DDE2E9] overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/90 border-b border-slate-800/80 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              <thead className="bg-[#F8FAFC] border-b border-[#DDE2E9] text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
                 <tr>
-                  <th className="py-4 px-5">Nhân sự</th>
-                  <th className="py-4 px-4">Mã NV</th>
-                  <th className="py-4 px-4">Phòng ban</th>
-                  <th className="py-4 px-4">Thông tin liên hệ</th>
-                  <th className="py-4 px-4">Dự án phụ trách</th>
-                  <th className="py-4 px-4">Tài khoản Site</th>
-                  <th className="py-4 px-4">Trạng thái</th>
-                  {isAdmin && <th className="py-4 px-5 text-right">Thao tác</th>}
+                  <th className="py-2.5 px-4">Nhân sự</th>
+                  <th className="py-2.5 px-3">Mã NV</th>
+                  <th className="py-2.5 px-3">Phòng ban</th>
+                  <th className="py-2.5 px-3">Thông tin liên hệ</th>
+                  <th className="py-2.5 px-3">Tài khoản Site</th>
+                  <th className="py-2.5 px-3">Trạng thái</th>
+                  {isAdmin && <th className="py-2.5 px-4 text-right">Thao tác</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              <tbody className="divide-y divide-[#EDF1F5] text-[#172033]" aria-busy={loading ? "true" : "false"}>
                 {loading ? (
-                  <tr>
-                    <td colSpan={isAdmin ? 8 : 7} className="py-16 text-center text-slate-500 text-xs">
-                      Đang tải danh sách nhân sự...
-                    </td>
-                  </tr>
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRowSkeleton key={i} columns={isAdmin ? 7 : 6} />
+                  ))
                 ) : staffList.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 8 : 7} className="py-16 text-center text-slate-500 text-xs">
-                      Không tìm thấy nhân sự nào phù hợp với bộ lọc.
+                    <td colSpan={isAdmin ? 7 : 6} className="py-12 text-center text-[#64748B] text-xs">
+                      <div className="flex flex-col items-center justify-center gap-1.5">
+                        <Users2 className="w-8 h-8 text-[#94A3B8] mb-1" />
+                        <span className="font-semibold text-[#172033]">Không tìm thấy nhân sự phù hợp</span>
+                        <span className="text-[#64748B] max-w-sm">
+                          {search || statusFilter !== "all"
+                            ? "Không có nhân sự nào khớp với điều kiện lọc tìm kiếm."
+                            : "Danh mục nhân sự hiện đang trống. Hãy thêm nhân sự mới hoặc import từ file Excel."}
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  staffList.map((s) => (
-                    <tr key={s.id} className="hover:bg-slate-800/40 transition-colors group">
-                      <td className="py-4 px-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0 shadow-md ring-1 ring-white/10">
+                  paginatedStaff.map((s) => (
+                    <tr key={s.id} className="hover:bg-[#F8FAFC] transition-colors">
+                      <td className="py-2.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-md bg-[#E5EDFA] border border-[#BFD4F7] text-[#2457A7] flex items-center justify-center font-bold text-xs uppercase shrink-0">
                             {s.fullName.charAt(0)}
                           </div>
                           <div>
-                            <div className="font-bold text-white text-sm group-hover:text-blue-300 transition-colors">
+                            <div className="font-medium text-[#172033] text-xs">
                               {s.fullName}
                             </div>
                             {s.user && (
-                              <div className="text-[10px] text-cyan-400 font-semibold mt-0.5">
-                                User Tool: @{s.user.username} ({s.user.role})
+                              <div className="text-[10px] text-[#64748B] font-mono">
+                                @{s.user.username} ({s.user.role})
                               </div>
                             )}
                           </div>
                         </div>
                       </td>
 
-                      <td className="py-4 px-4 font-mono font-bold text-blue-400">
+                      <td className="py-2.5 px-3 font-mono font-medium text-[#172033]">
                         {s.staffCode ? (
-                          <span className="px-2 py-0.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                          <span className="px-1.5 py-0.5 rounded bg-[#F1F3F6] border border-[#DDE2E9] text-[11px]">
                             {s.staffCode}
                           </span>
                         ) : (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-[#94A3B8]">—</span>
                         )}
                       </td>
 
-                      <td className="py-4 px-4 text-slate-300 font-medium">
+                      <td className="py-2.5 px-3 text-[#172033] font-medium">
                         {s.department || "—"}
                       </td>
 
-                      <td className="py-4 px-4 space-y-1">
+                      <td className="py-2.5 px-3 space-y-0.5">
                         {s.corporateEmail && (
                           <a
                             href={`mailto:${s.corporateEmail}`}
-                            className="flex items-center gap-1.5 text-slate-400 hover:text-blue-300 transition-colors"
+                            className="flex items-center gap-1.5 text-[#64748B] hover:text-[#2457A7] transition-colors"
                           >
-                            <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                            <Mail className="w-3 h-3 text-[#94A3B8] shrink-0" />
                             <span className="truncate max-w-[180px]">{s.corporateEmail}</span>
                           </a>
                         )}
                         {s.phoneNumber && (
                           <a
                             href={`tel:${s.phoneNumber}`}
-                            className="flex items-center gap-1.5 text-slate-400 hover:text-emerald-300 transition-colors"
+                            className="flex items-center gap-1.5 text-[#64748B] hover:text-[#2457A7] transition-colors"
                           >
-                            <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <Phone className="w-3 h-3 text-[#94A3B8] shrink-0" />
                             <span>{s.phoneNumber}</span>
                           </a>
                         )}
                       </td>
 
-                      <td className="py-4 px-4">
-                        <div className="flex flex-wrap gap-1 max-w-xs">
-                          {s.projectAssignments && s.projectAssignments.length > 0 ? (
-                            s.projectAssignments.map((pa: any) => (
-                              <span
-                                key={pa.id}
-                                className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30"
-                              >
-                                {pa.project?.projectName} (L{pa.tierLevel})
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-slate-600 italic">Chưa gán</span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-1.5 text-slate-400">
-                          <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-1 text-[#64748B] text-xs">
+                          <KeyRound className="w-3.5 h-3.5 text-[#94A3B8]" />
                           <span>{s.siteAccounts?.length || 0} tài khoản</span>
                         </div>
                       </td>
 
-                      <td className="py-4 px-4">
+                      <td className="py-2.5 px-3">
                         <span
-                          className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5 w-max ${
+                          className={`inline-flex px-2 py-0.5 rounded text-[10px] font-medium items-center gap-1.5 ${
                             s.status === "working"
-                              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                              : "bg-slate-800 text-slate-400 border border-slate-700"
+                              ? "bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]"
+                              : "bg-[#F1F3F6] text-[#64748B] border border-[#DDE2E9]"
                           }`}
                         >
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${
-                              s.status === "working" ? "bg-emerald-400" : "bg-slate-400"
+                              s.status === "working" ? "bg-[#15803D]" : "bg-[#94A3B8]"
                             }`}
                           />
                           {s.status === "working" ? "Đang làm việc" : "Đã nghỉ việc"}
@@ -404,18 +412,18 @@ export default function StaffPage() {
                       </td>
 
                       {isAdmin && (
-                        <td className="py-4 px-5 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="py-2.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => openEditModal(s)}
-                              className="p-2 rounded-xl bg-slate-950/70 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 transition-all"
+                              className="p-1 rounded hover:bg-[#F1F3F6] text-[#64748B] hover:text-[#172033] transition-colors"
                               title="Sửa thông tin nhân sự"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDelete(s)}
-                              className="p-2 rounded-xl bg-slate-950/70 hover:bg-rose-600/80 text-slate-400 hover:text-white border border-slate-800 hover:border-rose-500 transition-all"
+                              className="p-1 rounded hover:bg-[#FEF2F2] text-[#64748B] hover:text-[#B91C1C] transition-colors"
                               title="Xóa hồ sơ nhân sự"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -429,6 +437,18 @@ export default function StaffPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Accessible Pagination Landmark */}
+          {staffList.length > 0 && (
+            <Pagination
+              currentPage={staffPage}
+              totalItems={staffList.length}
+              pageSize={15}
+              onPageChange={setStaffPage}
+              filterDeps={[search, statusFilter]}
+              className="rounded-t-none border-x-0 border-b-0 border-t border-[#DDE2E9]"
+            />
+          )}
         </div>
       </div>
 
@@ -441,10 +461,10 @@ export default function StaffPage() {
         maxWidth="max-w-xl"
       >
         <form onSubmit={handleSave} className="space-y-4 text-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5 sm:col-span-2">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                Họ và Tên Nhân sự <span className="text-rose-400">*</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
+                Họ và Tên Nhân sự <span className="text-[#B91C1C]">*</span>
               </label>
               <input
                 type="text"
@@ -452,12 +472,12 @@ export default function StaffPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="VD: Nguyễn Văn An"
-                className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
+                className="w-full px-3 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7]"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
                 Mã Nhân viên
               </label>
               <input
@@ -465,12 +485,12 @@ export default function StaffPage() {
                 value={staffCode}
                 onChange={(e) => setStaffCode(e.target.value)}
                 placeholder="VD: EMP005"
-                className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
+                className="w-full px-3 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs font-mono uppercase focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
                 Phòng ban / Bộ phận
               </label>
               <input
@@ -478,12 +498,12 @@ export default function StaffPage() {
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
                 placeholder="VD: Khối Kỹ thuật & Công nghệ"
-                className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
+                className="w-full px-3 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
                 Email Công ty
               </label>
               <input
@@ -491,12 +511,12 @@ export default function StaffPage() {
                 value={corporateEmail}
                 onChange={(e) => setCorporateEmail(e.target.value)}
                 placeholder="an.nguyen@company.com"
-                className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
+                className="w-full px-3 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
                 Số Điện thoại
               </label>
               <input
@@ -504,49 +524,49 @@ export default function StaffPage() {
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="0912345678"
-                className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
+                className="w-full px-3 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
                 Trạng thái làm việc
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white text-xs font-medium"
+                className="w-full px-2.5 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
               >
                 <option value="working">Đang làm việc (Working)</option>
                 <option value="left">Đã nghỉ việc (Left)</option>
               </select>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
                 Ngày vào làm việc
               </label>
               <input
                 type="date"
                 value={joinDate}
                 onChange={(e) => setJoinDate(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="w-full px-2.5 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#DDE2E9]">
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800"
+              className="px-3.5 py-1.5 rounded-md text-xs font-medium text-[#64748B] hover:text-[#172033] hover:bg-[#F1F3F6] transition-colors"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 rounded-2xl text-xs font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white shadow-lg shadow-blue-500/25 disabled:opacity-50 transition-all"
+              className="px-4 py-1.5 rounded-md text-xs font-semibold bg-[#2457A7] hover:bg-[#1C4585] text-white shadow-xs disabled:opacity-50 transition-colors"
             >
               {saving ? "Đang lưu..." : editingStaff ? "Lưu thay đổi" : "Tạo hồ sơ"}
             </button>

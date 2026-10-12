@@ -4,7 +4,9 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Modal } from "@/components/Modal";
+import { Pagination } from "@/components/Pagination";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 import {
   Bell,
   CheckCheck,
@@ -26,11 +28,13 @@ import {
 
 export default function NotificationsPage() {
   const { success, error } = useToast();
+  const { confirm } = useConfirm();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Modal Create Manual Notification (Admin)
@@ -65,6 +69,7 @@ export default function NotificationsPage() {
         if (json.success) {
           setNotifications(json.data);
           setTotalPages(json.meta?.totalPages || 1);
+          setTotalItems(json.meta?.total || 0);
           setUnreadCount(json.meta?.unreadCount || 0);
         }
       }
@@ -110,9 +115,13 @@ export default function NotificationsPage() {
   };
 
   const handleDelete = async (id: string, notifTitle: string) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa thông báo "${notifTitle}" không?`)) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Xóa thông báo?",
+      message: `Bạn có chắc chắn muốn xóa thông báo "${notifTitle}" không?`,
+      confirmText: "Xóa thông báo",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/notifications/${id}`, { method: "DELETE" });
@@ -171,27 +180,27 @@ export default function NotificationsPage() {
     switch (sev) {
       case "success":
         return {
-          icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
-          badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+          icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />,
+          badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
           label: "Thành công",
         };
       case "warning":
         return {
-          icon: <AlertTriangle className="w-4 h-4 text-amber-400" />,
-          badge: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+          icon: <AlertTriangle className="w-4 h-4 text-amber-600" />,
+          badge: "bg-amber-50 text-amber-700 border-amber-200",
           label: "Cảnh báo",
         };
       case "important":
       case "security":
         return {
-          icon: <AlertOctagon className="w-4 h-4 text-rose-400" />,
-          badge: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+          icon: <AlertOctagon className="w-4 h-4 text-rose-600" />,
+          badge: "bg-rose-50 text-rose-700 border-rose-200",
           label: "Bảo mật",
         };
       default:
         return {
-          icon: <Info className="w-4 h-4 text-blue-400" />,
-          badge: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+          icon: <Info className="w-4 h-4 text-blue-600" />,
+          badge: "bg-blue-50 text-blue-700 border-blue-200",
           label: "Thông tin",
         };
     }
@@ -221,19 +230,19 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#060913] bg-cyber-grid">
+    <div className="flex-1 flex flex-col min-w-0 bg-[#F1F3F6] min-h-screen text-[#172033]">
       <Header
         title="Bảng tin Thông báo"
         subtitle="Luồng tin thông báo tập trung của hệ thống và đồng bộ qua nhóm Telegram"
         actionButton={
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             {unreadCount > 0 && (
               <button
                 type="button"
                 onClick={handleMarkAllRead}
-                className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all border border-slate-800 shadow-md"
+                className="px-3 py-1.5 rounded-md bg-white hover:bg-[#F8FAFC] text-[#172033] font-medium text-xs flex items-center gap-1.5 transition-colors border border-[#DDE2E9] shadow-xs"
               >
-                <CheckCheck className="w-4 h-4 text-blue-400" />
+                <CheckCheck className="w-3.5 h-3.5 text-[#2457A7]" />
                 <span>Đánh dấu tất cả đã đọc</span>
               </button>
             )}
@@ -242,9 +251,9 @@ export default function NotificationsPage() {
               <button
                 type="button"
                 onClick={() => setCreateModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-1.5 transition-all"
+                className="px-3.5 py-1.5 rounded-md bg-[#2457A7] hover:bg-[#1C4585] text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>Tạo thông báo</span>
               </button>
             )}
@@ -252,20 +261,20 @@ export default function NotificationsPage() {
         }
       />
 
-      <div className="p-6 md:p-8 space-y-6 max-w-5xl w-full mx-auto">
+      <div className="p-6 md:p-8 space-y-4 max-w-5xl w-full mx-auto">
         {/* Filter Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-3xl bg-slate-900/80 border border-slate-800/80 shadow-xl backdrop-blur-xl">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-lg bg-white border border-[#DDE2E9] shadow-xs">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => {
                 setFilter("all");
                 setPage(1);
               }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 filter === "all"
-                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                  ? "bg-[#2457A7] text-white shadow-xs font-semibold"
+                  : "text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#172033]"
               }`}
             >
               Tất cả
@@ -276,96 +285,92 @@ export default function NotificationsPage() {
                 setFilter("unread");
                 setPage(1);
               }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
                 filter === "unread"
-                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                  ? "bg-[#2457A7] text-white shadow-xs font-semibold"
+                  : "text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#172033]"
               }`}
             >
               <span>Chưa đọc</span>
               {unreadCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-extrabold">
+                <span className="px-1.5 py-0.2 rounded-full bg-[#B91C1C] text-white text-[10px] font-bold">
                   {unreadCount}
                 </span>
               )}
             </button>
           </div>
 
-          <div className="text-xs text-slate-400">
-            Trang <strong className="text-white">{page}</strong> / {totalPages}
+          <div className="text-xs text-[#64748B] font-medium">
+            Trang <strong className="text-[#172033]">{page}</strong> / {totalPages}
           </div>
         </div>
 
         {/* Notifications Feed */}
         {loading ? (
-          <div className="py-24 text-center text-slate-500 text-xs">
+          <div className="py-20 text-center text-[#94A3B8] text-xs">
             Đang tải dữ liệu bảng tin thông báo...
           </div>
         ) : notifications.length === 0 ? (
-          <div className="py-24 px-4 rounded-3xl bg-slate-900/50 border border-dashed border-slate-800 text-center space-y-3">
-            <Bell className="w-10 h-10 text-slate-600 mx-auto" />
-            <p className="text-slate-300 font-bold text-sm">Chưa có thông báo nào</p>
-            <p className="text-slate-500 text-xs max-w-sm mx-auto">
+          <div className="py-16 px-4 rounded-lg bg-white border border-[#DDE2E9] text-center space-y-2 shadow-xs">
+            <Bell className="w-8 h-8 text-[#94A3B8] mx-auto" />
+            <p className="text-[#172033] font-semibold text-sm">Chưa có thông báo nào</p>
+            <p className="text-[#64748B] text-xs max-w-sm mx-auto">
               {filter === "unread"
                 ? "Bạn đã đọc hết tất cả các thông báo!"
                 : "Hệ thống sẽ tự động cập nhật khi có các sự kiện về dự án, nhân sự, tài khoản hoặc thông báo mới từ Quản trị viên."}
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {notifications.map((n) => {
               const sev = getSeverityBadge(n.severity);
               return (
                 <div
                   key={n.id}
-                  className={`p-5 rounded-3xl border transition-all duration-300 flex flex-col sm:flex-row items-start justify-between gap-4 relative overflow-hidden backdrop-blur-xl ${
+                  className={`p-4 rounded-lg border transition-colors flex flex-col sm:flex-row items-start justify-between gap-4 relative shadow-xs ${
                     n.isRead
-                      ? "bg-slate-900/60 border-slate-800/80 hover:border-slate-700"
-                      : "bg-slate-900/90 border-blue-500/40 shadow-xl shadow-blue-500/5 hover:border-blue-500/60"
+                      ? "bg-white border-[#DDE2E9] hover:border-[#CBD5E1]"
+                      : "bg-[#F8FAFC] border-[#DDE2E9] hover:border-[#CBD5E1] border-l-4 border-l-[#2457A7]"
                   }`}
                 >
-                  {!n.isRead && (
-                    <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-blue-500 to-indigo-500" />
-                  )}
-
-                  <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                    <div className="p-2.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 shrink-0 mt-0.5">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="p-2 rounded-md bg-[#F1F3F6] border border-[#DDE2E9] shrink-0 mt-0.5">
                       {sev.icon}
                     </div>
 
-                    <div className="space-y-2 min-w-0 flex-1">
+                    <div className="space-y-1.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span
-                          className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${sev.badge}`}
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${sev.badge}`}
                         >
                           {sev.label}
                         </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-[#F1F3F6] text-[#64748B] border border-[#DDE2E9]">
                           {getTypeLabel(n.type)}
                         </span>
                         {!n.isRead && (
-                          <span className="px-2 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300 font-extrabold text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-[#FEF2F2] border border-[#FECACA] text-[#B91C1C] font-bold text-[10px]">
                             MỚI
                           </span>
                         )}
                       </div>
 
                       <div>
-                        <h3 className="text-sm sm:text-base font-extrabold text-white leading-snug">
+                        <h3 className="text-xs sm:text-sm font-bold text-[#172033] leading-snug">
                           {n.title}
                         </h3>
-                        <p className="text-xs text-slate-300 mt-1 leading-relaxed whitespace-pre-line">
+                        <p className="text-xs text-[#64748B] mt-1 leading-relaxed whitespace-pre-line">
                           {n.content}
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-4 text-[11px] text-slate-500 pt-1 flex-wrap">
-                        <span className="flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-slate-400" />
+                      <div className="flex items-center gap-4 text-[11px] text-[#94A3B8] pt-1 flex-wrap font-medium">
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3 text-[#94A3B8]" />
                           <span>{n.creatorName}</span>
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="flex items-center gap-1 font-mono">
+                          <Clock className="w-3 h-3 text-[#94A3B8]" />
                           <span>{new Date(n.createdAt).toLocaleString("vi-VN")}</span>
                         </span>
                       </div>
@@ -378,10 +383,10 @@ export default function NotificationsPage() {
                       <Link
                         href={n.targetUrl}
                         onClick={() => !n.isRead && handleMarkAsRead(n.id)}
-                        className="px-3 py-1.5 rounded-xl bg-blue-600/15 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 text-xs font-bold inline-flex items-center gap-1.5 transition-all"
+                        className="px-2.5 py-1 rounded-md bg-[#E5EDFA] hover:bg-[#D5E4F8] text-[#2457A7] border border-[#BFD4F7] text-xs font-medium inline-flex items-center gap-1 transition-colors"
                       >
                         <span>Xem chi tiết</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
+                        <ExternalLink className="w-3 h-3" />
                       </Link>
                     )}
 
@@ -389,10 +394,10 @@ export default function NotificationsPage() {
                       <button
                         type="button"
                         onClick={() => handleMarkAsRead(n.id)}
-                        className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                        className="p-1.5 rounded-md bg-[#F1F3F6] hover:bg-[#E2E8F0] text-[#64748B] hover:text-[#172033] transition-colors"
                         title="Đánh dấu đã đọc"
                       >
-                        <Check className="w-4 h-4 text-emerald-400" />
+                        <Check className="w-3.5 h-3.5 text-[#15803D]" />
                       </button>
                     )}
 
@@ -400,10 +405,10 @@ export default function NotificationsPage() {
                       <button
                         type="button"
                         onClick={() => handleDelete(n.id, n.title)}
-                        className="p-2 rounded-xl bg-slate-950/70 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-800 transition-colors"
+                        className="p-1.5 rounded-md bg-white hover:bg-[#FEF2F2] text-[#94A3B8] hover:text-[#B91C1C] border border-[#DDE2E9] transition-colors"
                         title="Xóa thông báo"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
@@ -413,29 +418,16 @@ export default function NotificationsPage() {
           </div>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-4">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-40"
-            >
-              Trang trước
-            </button>
-            <span className="text-xs text-slate-400 px-3">
-              {page} / {totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-40"
-            >
-              Trang sau
-            </button>
-          </div>
+        {/* Accessible Pagination Landmark */}
+        {totalItems > 0 && (
+          <Pagination
+            currentPage={page}
+            totalItems={totalItems}
+            pageSize={15}
+            onPageChange={(newPage) => setPage(newPage)}
+            filterDeps={[filter]}
+            className="mt-4"
+          />
         )}
       </div>
 
@@ -449,8 +441,8 @@ export default function NotificationsPage() {
       >
         <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Tiêu đề thông báo <span className="text-rose-400">*</span>
+            <label className="text-xs font-semibold text-[#64748B]">
+              Tiêu đề thông báo <span className="text-[#B91C1C]">*</span>
             </label>
             <input
               type="text"
@@ -458,19 +450,19 @@ export default function NotificationsPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="VD: Bảo trì hệ thống HIS Bệnh viện..."
-              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              <label className="text-xs font-semibold text-[#64748B]">
                 Loại thông báo
               </label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors"
               >
                 <option value="system">Hệ thống (System)</option>
                 <option value="project">Dự án (Project)</option>
@@ -482,13 +474,13 @@ export default function NotificationsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              <label className="text-xs font-semibold text-[#64748B]">
                 Mức độ
               </label>
               <select
                 value={severity}
                 onChange={(e) => setSeverity(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors"
               >
                 <option value="info">Thông tin (Info)</option>
                 <option value="success">Thành công (Success)</option>
@@ -500,7 +492,7 @@ export default function NotificationsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <label className="text-xs font-semibold text-[#64748B]">
               Đường dẫn liên kết (Target URL - Tùy chọn)
             </label>
             <input
@@ -508,13 +500,13 @@ export default function NotificationsPage() {
               value={targetUrl}
               onChange={(e) => setTargetUrl(e.target.value)}
               placeholder="/projects hoặc https://..."
-              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 font-mono"
+              className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs font-mono focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Nội dung thông báo <span className="text-rose-400">*</span>
+            <label className="text-xs font-semibold text-[#64748B]">
+              Nội dung thông báo <span className="text-[#B91C1C]">*</span>
             </label>
             <textarea
               rows={4}
@@ -522,22 +514,22 @@ export default function NotificationsPage() {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Nhập nội dung chi tiết thông báo..."
-              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+              className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors resize-none"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#DDE2E9]">
             <button
               type="button"
               onClick={() => setCreateModalOpen(false)}
-              className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800"
+              className="px-3.5 py-1.5 rounded-md text-xs font-medium text-[#64748B] hover:text-[#172033] hover:bg-[#F1F3F6]"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 rounded-2xl text-xs font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white shadow-lg shadow-blue-500/25 disabled:opacity-50 transition-all"
+              className="px-5 py-1.5 rounded-md text-xs font-semibold bg-[#2457A7] hover:bg-[#1C4585] text-white shadow-xs disabled:opacity-50 transition-colors"
             >
               {saving ? "Đang gửi..." : "Gửi thông báo"}
             </button>

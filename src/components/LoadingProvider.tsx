@@ -166,52 +166,41 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
           role="status"
           aria-live="polite"
           aria-busy="true"
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#060913]/75 backdrop-blur-md select-none transition-all duration-300 pointer-events-auto p-4 animate-fadeIn"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-xs select-none pointer-events-auto p-4 animate-modal-enter"
         >
-          <div className="relative max-w-sm w-full p-6 rounded-3xl bg-slate-950/95 border border-slate-700/80 shadow-2xl shadow-black/80 ring-1 ring-blue-500/20 text-center space-y-4">
-            {/* Ambient glow behind spinner */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-blue-500/15 rounded-full blur-2xl pointer-events-none" />
-
+          <div className="relative max-w-sm w-full p-5 rounded-lg bg-white border border-slate-200 shadow-xl text-center space-y-3">
             {/* Spinner Icon */}
-            <div className="relative flex items-center justify-center">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 p-0.5 shadow-lg shadow-cyan-500/25">
-                <div className="w-full h-full bg-[#070b16] rounded-2xl flex items-center justify-center">
-                  <Loader2 className="w-7 h-7 text-cyan-400 animate-spin" />
-                </div>
+            <div className="flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                <Loader2 className="w-5 h-5 animate-spin" />
               </div>
             </div>
 
             {/* Message */}
-            <div className="space-y-1 relative z-10">
-              <h3 className="text-sm font-extrabold text-white tracking-wide">
+            <div className="space-y-0.5">
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
                 {currentGlobalMessage || "Đang xử lý..."}
               </h3>
-              <p className="text-[11px] text-slate-400 font-medium">
-                Vui lòng đợi trong giây lát. Hệ thống đang bảo vệ và đồng bộ dữ liệu.
+              <p className="text-xs text-slate-500">
+                Vui lòng đợi trong giây lát...
               </p>
-            </div>
-
-            {/* Progress indicator bar */}
-            <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden relative">
-              <div className="bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500 h-full w-full animate-pulse" />
             </div>
 
             {/* Timeout warning (hiển thị khi request kéo dài > 25s) */}
             {timeoutTriggered && (
-              <div className="mt-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs text-left space-y-2">
-                <div className="flex items-center gap-2 font-bold text-amber-300">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+              <div className="mt-3 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs text-left space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
                   <span>Xử lý lâu hơn dự kiến</span>
                 </div>
-                <p className="text-[11px] text-slate-300 leading-relaxed">
-                  Máy chủ hoặc kết nối mạng đang phản hồi chậm. Bạn có thể tiếp tục chờ hoặc đóng
-                  lớp phủ nếu thao tác không hoàn tất.
+                <p className="text-[11px] text-amber-700 leading-relaxed">
+                  Máy chủ hoặc kết nối mạng đang phản hồi chậm. Bạn có thể tiếp tục chờ hoặc đóng lớp phủ.
                 </p>
                 <div className="pt-1 flex justify-end">
                   <button
                     type="button"
                     onClick={handleForceCloseOverlay}
-                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-[11px] transition-colors"
+                    className="px-2.5 py-1 rounded border border-amber-300 bg-white hover:bg-amber-100 text-amber-900 font-semibold text-[11px] transition-colors"
                   >
                     Đóng lớp phủ
                   </button>

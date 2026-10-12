@@ -69,39 +69,30 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050811] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden bg-cyber-grid">
-      {/* Dynamic Ambient Glow Mesh */}
-      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-blue-600/15 rounded-full blur-[120px] pointer-events-none -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none translate-x-1/2 translate-y-1/2" />
-      <div className="absolute top-1/2 right-1/3 w-[350px] h-[350px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none" />
-
-      <div className="relative w-full max-w-lg z-10">
+    <div className="min-h-screen bg-[#F1F3F6] flex items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 text-white shadow-2xl shadow-blue-500/30 mb-4 border border-white/20 ring-4 ring-blue-500/10 hover:scale-105 transition-transform duration-300">
-            <Layers className="w-8 h-8" />
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-[#18283F] text-white shadow-xs mb-3 border border-[#233752]">
+            <Layers className="w-6 h-6 text-[#2457A7]" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center justify-center gap-2.5">
-            <span>PMS Hub Enterprise</span>
-            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/20 text-cyan-300 border border-cyan-500/30">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#172033] tracking-tight flex items-center justify-center gap-2">
+            <span>{process.env.NEXT_PUBLIC_APP_NAME || "ISF Can Tho Hub"}</span>
+            <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-[#E5EDFA] text-[#2457A7] border border-[#CBD5E1]">
               v2.3
             </span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-md mx-auto leading-relaxed">
-            Hệ thống Quản trị Tập trung Tài sản Số, Nhân sự & Két Mật khẩu Dự án
+          <p className="text-xs text-[#64748B] mt-1.5 max-w-sm mx-auto leading-relaxed">
+            {process.env.NEXT_PUBLIC_APP_DESCRIPTION || "Hệ thống Quản trị Tập trung Team ISF Cần Thơ"}
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="p-7 sm:p-8 rounded-3xl bg-[#0b1020]/90 border border-slate-800/90 shadow-2xl shadow-black/80 backdrop-blur-2xl ring-1 ring-white/10 relative overflow-hidden">
-          {/* Top highlight bar */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-cyan-400 to-indigo-600" />
-
-          <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="p-6 sm:p-8 rounded-lg bg-white border border-[#DDE2E9] shadow-xs">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+              <label className="text-xs font-semibold text-[#172033] flex items-center justify-between">
                 <span>Tên đăng nhập</span>
-                <span className="text-[10px] text-slate-500 font-normal">Tài khoản hệ thống</span>
               </label>
               <div className="relative">
                 <input
@@ -111,16 +102,15 @@ export default function LoginPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="admin, pm_minh, dev_giang..."
-                  className="w-full px-4 py-3 pl-11 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500 transition-all shadow-inner"
+                  className="w-full px-3 py-2 pl-9 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors"
                 />
-                <User className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
+                <User className="w-4 h-4 text-[#94A3B8] absolute left-3 top-2.5" />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+              <label className="text-xs font-semibold text-[#172033] flex items-center justify-between">
                 <span>Mật khẩu</span>
-                <span className="text-[10px] text-slate-500 font-normal">Khóa bảo vệ cá nhân</span>
               </label>
               <div className="relative">
                 <input
@@ -129,41 +119,43 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full px-4 py-3 pl-11 pr-11 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500 transition-all font-mono shadow-inner"
+                  className="w-full px-3 py-2 pl-9 pr-9 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors font-mono"
                 />
-                <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
+                <Lock className="w-4 h-4 text-[#94A3B8] absolute left-3 top-2.5" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-3.5 text-slate-400 hover:text-white transition-colors"
+                  className="absolute right-3 top-2.5 text-[#94A3B8] hover:text-[#172033] transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <ActionButton
-              type="submit"
-              variant="primary"
-              isLoading={loading}
-              loadingText="Đang xác thực thông tin..."
-              icon={<ArrowRight className="w-4 h-4" />}
-              className="w-full py-3.5 text-sm font-bold shadow-lg shadow-blue-500/25 justify-center hover:scale-[1.01]"
-            >
-              Đăng nhập vào Hệ thống
-            </ActionButton>
+            <div className="pt-2">
+              <ActionButton
+                type="submit"
+                variant="primary"
+                isLoading={loading}
+                loadingText="Đang xác thực thông tin..."
+                icon={<ArrowRight className="w-4 h-4" />}
+                className="w-full py-2.5 text-xs font-semibold bg-[#2457A7] hover:bg-[#1C4585] text-white rounded-md shadow-xs justify-center transition-colors"
+              >
+                Đăng nhập vào Hệ thống
+              </ActionButton>
+            </div>
           </form>
 
           {/* Security Features Trust Badges */}
-          <div className="mt-6 pt-5 border-t border-slate-800/60 flex items-center justify-between text-[10px] text-slate-400">
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Bảo mật dữ liệu an toàn</span>
+          <div className="mt-6 pt-4 border-t border-[#EDF1F5] flex items-center justify-between text-[11px] text-[#64748B]">
+            <div className="flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#15803D]" />
+              <span>Bảo mật dữ liệu</span>
             </div>
             <span>•</span>
-            <div>Bảo vệ Chống Brute-force</div>
+            <div>Khóa brute-force</div>
             <span>•</span>
-            <div>Nhật ký Kiểm toán</div>
+            <div>Audit Trail</div>
           </div>
         </div>
       </div>

@@ -16,6 +16,13 @@ export async function GET(
     const project = await prisma.project.findUnique({
       where: { id },
       include: {
+        region: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
         assignments: {
           where: { unassignedAt: null },
           include: {
@@ -32,6 +39,15 @@ export async function GET(
             },
           },
           orderBy: { tierLevel: "asc" },
+        },
+        contactStaff: {
+          select: {
+            id: true,
+            fullName: true,
+            corporateEmail: true,
+            phoneNumber: true,
+            department: true,
+          },
         },
         siteAccounts: {
           where: { deletedAt: null },
@@ -86,6 +102,12 @@ export async function GET(
         defaultPassword: project.defaultPassword,
         status: project.status,
         description: project.description,
+        regionId: project.regionId,
+        region: project.region,
+        contactStaffId: project.contactStaffId,
+        contactStaffName: project.contactStaffName || project.contactStaff?.fullName || null,
+        contactStaffPosition: project.contactStaffPosition || project.contactStaff?.department || null,
+        contactStaff: project.contactStaff,
         assignments: project.assignments,
         siteAccounts: maskedAccounts,
         isMember,
@@ -125,9 +147,13 @@ export async function PUT(
       defaultPassword,
       status,
       description,
+      regionId,
       level1StaffId,
       level2StaffId,
       level3StaffId,
+      contactStaffId,
+      contactStaffName,
+      contactStaffPosition,
     } = body;
 
     const existingProject = await prisma.project.findUnique({
@@ -240,6 +266,29 @@ export async function PUT(
       });
     }
 
+    let updatedContactStaffId = existingProject.contactStaffId;
+    let updatedContactStaffName = existingProject.contactStaffName;
+    let updatedContactStaffPosition = existingProject.contactStaffPosition;
+
+    if (contactStaffId !== undefined) {
+      updatedContactStaffId = contactStaffId || null;
+      if (updatedContactStaffId && (!contactStaffName || !contactStaffPosition)) {
+        const cStaff = await prisma.staff.findUnique({ where: { id: updatedContactStaffId } });
+        if (cStaff) {
+          if (!contactStaffName) updatedContactStaffName = cStaff.fullName;
+          if (!contactStaffPosition) updatedContactStaffPosition = cStaff.department || null;
+        }
+      }
+    }
+
+    if (contactStaffName !== undefined) {
+      updatedContactStaffName = contactStaffName ? String(contactStaffName).trim() : null;
+    }
+
+    if (contactStaffPosition !== undefined) {
+      updatedContactStaffPosition = contactStaffPosition ? String(contactStaffPosition).trim() : null;
+    }
+
     const updated = await prisma.project.update({
       where: { id },
       data: {
@@ -250,6 +299,10 @@ export async function PUT(
         defaultPassword: defaultPassword !== undefined ? (defaultPassword ? defaultPassword.trim() : null) : existingProject.defaultPassword,
         status: status || existingProject.status,
         description: description !== undefined ? (description ? description.trim() : null) : existingProject.description,
+        regionId: regionId !== undefined ? (regionId ? String(regionId).trim() : null) : existingProject.regionId,
+        contactStaffId: updatedContactStaffId,
+        contactStaffName: updatedContactStaffName,
+        contactStaffPosition: updatedContactStaffPosition,
       },
     });
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { Modal } from "@/components/Modal";
+import { Pagination } from "@/components/Pagination";
 import { useToast } from "@/components/Toast";
 import {
   History,
@@ -72,51 +73,51 @@ export default function AuditLogsPage() {
   const getActionBadge = (code: string) => {
     if (code.includes("FAIL") || code.includes("LOCKED") || code.includes("DENIED")) {
       return (
-        <span className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA]">
           {code}
         </span>
       );
     }
     if (code.includes("REVEAL")) {
       return (
-        <span className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse flex items-center gap-1">
-          <KeyRound className="w-3 h-3 text-amber-400" />
+        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] flex items-center gap-1">
+          <KeyRound className="w-3 h-3 text-[#B45309]" />
           {code}
         </span>
       );
     }
     if (code.includes("IMPORT")) {
       return (
-        <span className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-teal-500/15 text-teal-300 border border-teal-500/30 flex items-center gap-1">
-          <FileSpreadsheet className="w-3 h-3 text-teal-400" />
+        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0] flex items-center gap-1">
+          <FileSpreadsheet className="w-3 h-3 text-[#15803D]" />
           {code}
         </span>
       );
     }
     if (code.includes("LOGIN") || code.includes("SUCCESS")) {
       return (
-        <span className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">
           {code}
         </span>
       );
     }
     return (
-      <span className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#E5EDFA] text-[#2457A7] border border-[#BFD4F7]">
         {code}
       </span>
     );
   };
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#060913] bg-cyber-grid">
+    <div className="flex-1 flex flex-col min-w-0 bg-[#F1F3F6] min-h-screen text-[#172033]">
       <Header
         title="Nhật ký Kiểm toán An ninh (Audit Trail)"
         subtitle="Hệ thống lưu trữ bất biến (Write-Once-Read-Many) theo dõi 100% các hành vi nhạy cảm"
       />
 
-      <div className="p-6 md:p-8 space-y-6 max-w-7xl w-full mx-auto">
+      <div className="p-6 md:p-8 space-y-4 max-w-7xl w-full mx-auto">
         {/* Search & Action Filters Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-3xl bg-slate-900/80 border border-slate-800/80 shadow-xl backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-lg bg-white border border-[#DDE2E9] shadow-xs">
           <div className="relative w-full sm:w-80">
             <input
               type="text"
@@ -126,12 +127,12 @@ export default function AuditLogsPage() {
                 setPage(1);
               }}
               placeholder="Tìm theo hành vi, IP, người dùng, entity..."
-              className="w-full px-4 py-2.5 pl-10 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
+              className="w-full px-3 py-1.5 pl-8 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors"
             />
-            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+            <Search className="w-3.5 h-3.5 text-[#94A3B8] absolute left-2.5 top-2.5" />
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800 overflow-x-auto w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
             {[
               { id: "all", label: "Tất cả sự kiện" },
               { id: "VAULT_REVEAL_PASSWORD", label: "Mở Mật khẩu" },
@@ -144,10 +145,10 @@ export default function AuditLogsPage() {
                   setActionCodeFilter(f.id);
                   setPage(1);
                 }}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors shrink-0 ${
                   actionCodeFilter === f.id
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                    ? "bg-[#2457A7] text-white shadow-xs font-semibold"
+                    : "bg-white text-[#64748B] border border-[#DDE2E9] hover:bg-[#F8FAFC] hover:text-[#172033]"
                 }`}
               >
                 {f.label}
@@ -157,79 +158,79 @@ export default function AuditLogsPage() {
         </div>
 
         {/* Logs Table */}
-        <div className="rounded-3xl bg-slate-900/80 border border-slate-800/80 overflow-hidden shadow-2xl backdrop-blur-xl">
+        <div className="rounded-lg bg-white border border-[#DDE2E9] overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/90 border-b border-slate-800/80 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              <thead className="bg-[#F8FAFC] border-b border-[#DDE2E9] text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
                 <tr>
-                  <th className="py-4 px-5">Thời gian (UTC+7)</th>
-                  <th className="py-4 px-4">Người thực hiện</th>
-                  <th className="py-4 px-4">Mã Hành vi (Action Code)</th>
-                  <th className="py-4 px-4">Đối tượng tác động</th>
-                  <th className="py-4 px-4">Địa chỉ IP</th>
-                  <th className="py-4 px-5 text-right">Chi tiết</th>
+                  <th className="py-3 px-4">Thời gian (UTC+7)</th>
+                  <th className="py-3 px-4">Người thực hiện</th>
+                  <th className="py-3 px-4">Mã Hành vi (Action Code)</th>
+                  <th className="py-3 px-4">Đối tượng tác động</th>
+                  <th className="py-3 px-4">Địa chỉ IP</th>
+                  <th className="py-3 px-4 text-right">Chi tiết</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300 font-mono">
+              <tbody className="divide-y divide-[#EDF1F5] text-[#172033]">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="py-16 text-center text-slate-500 font-sans text-xs">
+                    <td colSpan={6} className="py-12 text-center text-[#94A3B8] font-sans text-xs">
                       Đang tải nhật ký kiểm toán...
                     </td>
                   </tr>
                 ) : logs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-16 text-center text-slate-500 font-sans text-xs">
+                    <td colSpan={6} className="py-12 text-center text-[#94A3B8] font-sans text-xs">
                       Không tìm thấy bản ghi kiểm toán nào phù hợp.
                     </td>
                   </tr>
                 ) : (
                   logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-4 px-5 text-slate-400 text-[11px] whitespace-nowrap">
+                    <tr key={log.id} className="hover:bg-[#F8FAFC] transition-colors">
+                      <td className="py-3 px-4 text-[#64748B] font-mono text-[11px] whitespace-nowrap">
                         {formatDate(log.createdAt)}
                       </td>
 
-                      <td className="py-4 px-4 font-sans">
+                      <td className="py-3 px-4">
                         {log.user ? (
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-white font-mono text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-[#172033] font-mono text-xs">
                               @{log.user.username}
                             </span>
                             {log.user.staff?.fullName && (
-                              <span className="text-[11px] text-slate-400">
+                              <span className="text-[11px] text-[#64748B]">
                                 ({log.user.staff.fullName})
                               </span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-slate-500 italic">Khách / Hệ thống</span>
+                          <span className="text-[#94A3B8] italic">Khách / Hệ thống</span>
                         )}
                       </td>
 
-                      <td className="py-4 px-4 font-sans">
+                      <td className="py-3 px-4">
                         {getActionBadge(log.actionCode)}
                       </td>
 
-                      <td className="py-4 px-4 font-sans text-slate-300">
-                        <span className="text-blue-400 font-bold">{log.targetEntity}</span>
+                      <td className="py-3 px-4 text-[#172033]">
+                        <span className="text-[#2457A7] font-semibold">{log.targetEntity}</span>
                         {log.targetEntityId && (
-                          <span className="text-[10px] text-slate-500 ml-1.5 font-mono truncate max-w-[120px] inline-block align-bottom">
+                          <span className="text-[10px] text-[#94A3B8] ml-1 font-mono truncate max-w-[120px] inline-block align-bottom">
                             ({log.targetEntityId.substring(0, 8)}...)
                           </span>
                         )}
                       </td>
 
-                      <td className="py-4 px-4 text-slate-400 text-[11px]">
+                      <td className="py-3 px-4 text-[#64748B] font-mono text-[11px]">
                         {log.ipAddress}
                       </td>
 
-                      <td className="py-4 px-5 text-right font-sans">
+                      <td className="py-3 px-4 text-right">
                         <button
                           onClick={() => setSelectedLog(log)}
-                          className="px-3 py-1.5 rounded-xl bg-slate-950/70 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition-all"
+                          className="px-2.5 py-1 rounded-md bg-white hover:bg-[#F8FAFC] text-[#172033] border border-[#DDE2E9] text-xs font-medium inline-flex items-center gap-1 shadow-xs transition-colors"
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-3.5 h-3.5 text-[#64748B]" />
                           <span>Chi tiết</span>
                         </button>
                       </td>
@@ -240,30 +241,15 @@ export default function AuditLogsPage() {
             </table>
           </div>
 
-          {/* Pagination Footer */}
-          <div className="p-4 bg-slate-950/80 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-            <div>
-              Tổng số bản ghi: <strong className="text-white">{meta.total}</strong> (Trang {meta.page} / {meta.totalPages || 1})
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-colors border border-slate-800"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="font-bold text-white px-2">Trang {page}</span>
-              <button
-                disabled={page >= meta.totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-colors border border-slate-800"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+          {/* Accessible Pagination Landmark */}
+          <Pagination
+            currentPage={page}
+            totalItems={meta.total || 0}
+            pageSize={25}
+            onPageChange={(newPage) => setPage(newPage)}
+            filterDeps={[search, actionCodeFilter]}
+            className="rounded-t-none border-x-0 border-b-0 border-t border-[#DDE2E9]"
+          />
         </div>
       </div>
 
@@ -277,46 +263,46 @@ export default function AuditLogsPage() {
           maxWidth="max-w-lg"
         >
           <div className="space-y-4 text-xs font-sans">
-            <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-slate-950 border border-slate-800">
+            <div className="grid grid-cols-2 gap-3 p-3.5 rounded-lg bg-[#F8FAFC] border border-[#DDE2E9]">
               <div>
-                <span className="text-slate-400">Người thực hiện:</span>
-                <div className="font-extrabold text-white text-sm mt-0.5 font-mono">
+                <span className="text-[#64748B] font-medium">Người thực hiện:</span>
+                <div className="font-semibold text-[#172033] text-xs mt-0.5 font-mono">
                   {selectedLog.user?.username ? `@${selectedLog.user.username}` : "Hệ thống"}
                 </div>
               </div>
               <div>
-                <span className="text-slate-400">Đối tượng tác động:</span>
-                <div className="font-extrabold text-blue-400 text-sm mt-0.5">
+                <span className="text-[#64748B] font-medium">Đối tượng tác động:</span>
+                <div className="font-semibold text-[#2457A7] text-xs mt-0.5">
                   {selectedLog.targetEntity} {selectedLog.targetEntityId ? `(${selectedLog.targetEntityId.substring(0, 8)}...)` : ""}
                 </div>
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-[#64748B]">
                 User Agent / Trình duyệt & Thiết bị:
               </label>
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-[11px] text-slate-300 break-all leading-relaxed">
+              <div className="p-2.5 rounded-md bg-[#F8FAFC] border border-[#DDE2E9] font-mono text-[11px] text-[#172033] break-all leading-relaxed">
                 {selectedLog.userAgent || "N/A"}
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-[#64748B]">
                 Ngữ cảnh Dữ liệu (Context JSON Payload):
               </label>
-              <pre className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 font-mono text-xs text-emerald-400 overflow-x-auto whitespace-pre-wrap max-h-56 leading-relaxed">
+              <pre className="p-3 rounded-md bg-[#18283F] border border-[#233752] font-mono text-xs text-emerald-400 overflow-x-auto whitespace-pre-wrap max-h-56 leading-relaxed">
                 {selectedLog.contextJson
                   ? JSON.stringify(JSON.parse(selectedLog.contextJson), null, 2)
                   : "Không có dữ liệu payload bổ sung."}
               </pre>
             </div>
 
-            <div className="pt-2 border-t border-slate-800">
+            <div className="pt-2 border-t border-[#DDE2E9] flex justify-end">
               <button
                 type="button"
                 onClick={() => setSelectedLog(null)}
-                className="w-full py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold transition-colors"
+                className="px-4 py-1.5 rounded-md bg-white hover:bg-[#F8FAFC] text-[#172033] border border-[#DDE2E9] font-medium transition-colors"
               >
                 Đóng
               </button>

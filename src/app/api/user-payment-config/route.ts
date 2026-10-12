@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     const session = await requireAuth();
     const body = await request.json();
 
-    const { bankCode, bankName, accountNumber, accountName, defaultContent } = body;
+    const { bankCode, bankName, accountNumber, accountName, defaultContent, branch } = body;
 
     if (!bankCode || !bankCode.trim()) {
       return NextResponse.json(
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
 
     const cleanAccNo = accountNumber.trim().replace(/\s+/g, "");
     const cleanAccName = accountName.trim().toUpperCase();
+    const cleanBranch = branch ? String(branch).trim() : null;
 
     const config = await prisma.userPaymentConfig.upsert({
       where: { userId: session.userId },
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
         bankName: (bankName || bankCode).trim(),
         accountNumber: cleanAccNo,
         accountName: cleanAccName,
+        branch: cleanBranch,
         defaultContent: defaultContent ? defaultContent.trim() : "ORDER",
       },
       update: {
@@ -78,6 +80,7 @@ export async function POST(request: Request) {
         bankName: (bankName || bankCode).trim(),
         accountNumber: cleanAccNo,
         accountName: cleanAccName,
+        branch: cleanBranch,
         defaultContent: defaultContent ? defaultContent.trim() : "ORDER",
       },
     });

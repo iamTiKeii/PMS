@@ -43,3 +43,46 @@ export async function GET(req: Request) {
     );
   }
 }
+
+// POST /api/telegram/deliveries - INT-02: Gửi lại thông báo Telegram bị lỗi
+export async function POST(req: Request) {
+  try {
+    await requireRole(["admin"]);
+    const body = await req.json();
+    const { deliveryId } = body;
+
+    if (!deliveryId) {
+      return NextResponse.json(
+        { success: false, error: { code: "MSG-INT-01", message: "Vui lòng cung cấp mã bản ghi thông báo (deliveryId)." } },
+        { status: 400 }
+      );
+    }
+
+    const { retryTelegramDelivery } = await import("@/lib/notifications");
+    const result = await retryTelegramDelivery(deliveryId);
+
+    if (result.success) {
+      return NextResponse.json({
+        success: true,
+        message: result.message,
+      });
+    } else {
+      return NextResponse.json(
+        { success: false, error: { code: "MSG-INT-02", message: result.message } },
+        { status: 400 }
+      );
+    }
+  } catch (err: any) {
+    if (err.message === "FORBIDDEN" || err.message === "UNAUTHORIZED") {
+      return NextResponse.json(
+        { success: false, error: { code: "MSG-06", message: "Bạn không có quyền thực hiện chức năng này." } },
+        { status: 403 }
+      );
+    }
+    return NextResponse.json(
+      { success: false, error: { code: "MSG-500", message: "Lỗi khi thử gửi lại thông báo." } },
+      { status: 500 }
+    );
+  }
+}
+

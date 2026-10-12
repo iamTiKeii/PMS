@@ -10,7 +10,6 @@ import {
   Download,
   AlertCircle,
   CheckCircle2,
-  X,
   FileCheck,
   Loader2,
   Trash2,
@@ -46,7 +45,7 @@ export function ExcelImportModal({
   onImport,
   onSuccess,
 }: ExcelImportModalProps) {
-  const { success, error, toast } = useToast();
+  const { success, error } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [fileName, setFileName] = useState<string | null>(null);
@@ -62,7 +61,6 @@ export function ExcelImportModal({
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Dữ liệu mẫu");
 
-      // Auto-size columns
       const colWidths = columns.map((col) => ({
         wch: Math.max(col.label.length, col.example.length, 18),
       }));
@@ -79,107 +77,91 @@ export function ExcelImportModal({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    processFile(file);
-  };
 
-  const processFile = (file: File) => {
-    setLoading(true);
     setFileName(file.name);
+    setLoading(true);
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = (evt) => {
       try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: "array", cellDates: true });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        const rawJson: any[] = XLSX.utils.sheet_to_json(worksheet);
+        const bstr = evt.target?.result;
+        const workbook = XLSX.read(bstr, { type: "binary" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
 
-        if (!rawJson || rawJson.length === 0) {
-          error("File Excel không có dữ liệu nào.");
-          setLoading(false);
+        const rawData: any[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+        if (rawData.length === 0) {
+          error("File Excel không có dữ liệu.");
+          handleResetFile();
           return;
         }
 
-        // Map column labels or keys flexibly
-        const mappedRows: any[] = [];
-        const valids: any[] = [];
-        const invalids: { row: any; index: number; errors: string[] }[] = [];
+        const valid: any[] = [];
+        const invalid: { row: any; index: number; errors: string[] }[] = [];
 
-        // Build a normalized row key mapping
-        rawJson.forEach((row, idx) => {
-          // Check if row is completely empty
-          const rowValues = Object.values(row).filter((v) => v !== null && v !== undefined && String(v).trim() !== "");
-          if (rowValues.length === 0) {
-            return; // Skip blank rows
-          }
-
-          const normalizedRow: Record<string, any> = {};
-          Object.keys(row).forEach((k) => {
-            normalizedRow[k.trim().toLowerCase()] = row[k];
-          });
-
-          const item: Record<string, any> = {};
-          const rowErrors: string[] = [];
+        rawData.forEach((rawRow, idx) => {
+          const row: Record<string, any> = {};
 
           columns.forEach((col) => {
-            const labelNorm = col.label.trim().toLowerCase();
-            const keyNorm = col.key.trim().toLowerCase();
-
-            // Match by normalized label or key or exact row key
-            const val =
-              row[col.label] !== undefined
-                ? row[col.label]
-                : row[col.key] !== undefined
-                ? row[col.key]
-                : normalizedRow[labelNorm] !== undefined
-                ? normalizedRow[labelNorm]
-                : normalizedRow[keyNorm];
-
-            if (val !== undefined && val !== null) {
-              if (val instanceof Date && !isNaN(val.getTime())) {
-                const y = val.getFullYear();
-                const m = String(val.getMonth() + 1).padStart(2, "0");
-                const d = String(val.getDate()).padStart(2, "0");
-                item[col.key] = `${y}-${m}-${d}`;
-              } else {
-                item[col.key] = String(val).trim();
-              }
+            const exactVal = rawRow[col.label] ?? rawRow[col.key];
+            if (exactVal !== undefined && exactVal !== "") {
+              row[col.key] = exactVal;
             } else {
-              item[col.key] = "";
-            }
-
-            if (col.required && (!item[col.key] || item[col.key] === "")) {
-              rowErrors.push(`Thiếu "${col.label}"`);
+              const matchedKey = Object.keys(rawRow).find(
+                (k) =>
+                  k.trim().toLowerCase() === col.label.trim().toLowerCase() ||
+                  k.trim().toLowerCase() === col.key.trim().toLowerCase()
+              );
+              if (matchedKey) {
+                row[col.key] = rawRow[matchedKey];
+              }
             }
           });
 
-          mappedRows.push(item);
-          if (rowErrors.length === 0) {
-            valids.push(item);
+          const isRowCompletelyEmpty = Object.values(row).every(
+            (v) => v === undefined || v === null || String(v).trim() === ""
+          );
+          if (isRowCompletelyEmpty) {
+            return;
+          }
+
+          const rowErrors: string[] = [];
+          columns.forEach((col) => {
+            if (col.required) {
+              const val = row[col.key];
+              if (val === undefined || val === null || String(val).trim() === "") {
+                rowErrors.push(`Thiếu "${col.label}"`);
+              }
+            }
+          });
+
+          if (rowErrors.length > 0) {
+            invalid.push({ row, index: idx + 1, errors: rowErrors });
           } else {
-            invalids.push({ row: item, index: idx + 1, errors: rowErrors });
+            valid.push(row);
           }
         });
 
-        if (mappedRows.length === 0) {
-          error("File Excel không chứa dòng dữ liệu hợp lệ nào (chỉ có dòng trống).");
-          setLoading(false);
-          return;
-        }
+        setParsedRows(rawData);
+        setValidRows(valid);
+        setInvalidRows(invalid);
 
-        setParsedRows(mappedRows);
-        setValidRows(valids);
-        setInvalidRows(invalids);
-        setLoading(false);
+        if (valid.length === 0 && invalid.length > 0) {
+          error(`Tất cả ${invalid.length} dòng dữ liệu đều thiếu thông tin bắt buộc.`);
+        } else {
+          success(`Đã nạp file: ${valid.length} dòng hợp lệ, ${invalid.length} dòng cảnh báo.`);
+        }
       } catch (err) {
         console.error(err);
-        error("Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.");
+        error("Không thể đọc định dạng file Excel. Vui lòng kiểm tra lại file.");
+        handleResetFile();
+      } finally {
         setLoading(false);
       }
     };
 
-    reader.readAsArrayBuffer(file);
+    reader.readAsBinaryString(file);
   };
 
   const handleResetFile = () => {
@@ -187,12 +169,14 @@ export function ExcelImportModal({
     setParsedRows([]);
     setValidRows([]);
     setInvalidRows([]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleExecuteImport = async () => {
     if (validRows.length === 0) {
-      error("Không có dòng dữ liệu hợp lệ nào để import.");
+      error("Không có dòng dữ liệu hợp lệ để nhập.");
       return;
     }
 
@@ -225,25 +209,25 @@ export function ExcelImportModal({
       subtitle={subtitle || "Nhập dữ liệu hàng loạt từ file bảng tính Excel (.xlsx, .xls, .csv)"}
       maxWidth="max-w-3xl"
     >
-      <div className="space-y-5 text-xs">
+      <div className="space-y-4 text-xs">
         {/* Template Download and File Dropzone */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-xl bg-slate-950/70 border border-slate-800">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-lg bg-slate-50 border border-slate-200">
           <div>
-            <div className="font-bold text-white text-sm flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <div className="font-bold text-slate-800 text-sm flex items-center gap-2">
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               <span>File mẫu chuẩn hóa</span>
             </div>
-            <p className="text-slate-400 text-[11px] mt-0.5">
-              Tải file Excel mẫu có sẵn tiêu đề cột chuẩn để điền dữ liệu chính xác nhất.
+            <p className="text-slate-500 text-[11px] mt-0.5">
+              Tải file Excel mẫu có sẵn tiêu đề cột chuẩn để chuẩn bị dữ liệu chính xác.
             </p>
           </div>
 
           <button
             type="button"
             onClick={handleDownloadTemplate}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold flex items-center gap-1.5 transition-colors shrink-0 shadow-md"
+            className="px-3 py-1.5 rounded-md bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold flex items-center gap-1.5 transition-colors shrink-0 shadow-xs"
           >
-            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <Download className="w-3.5 h-3.5 text-emerald-600" />
             <span>Tải file Excel mẫu</span>
           </button>
         </div>
@@ -252,7 +236,7 @@ export function ExcelImportModal({
         {!fileName ? (
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-slate-700 hover:border-blue-500/80 rounded-2xl p-8 text-center cursor-pointer transition-all bg-slate-950/40 hover:bg-blue-950/10 group"
+            className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-lg p-6 text-center cursor-pointer transition-colors bg-slate-50/50 hover:bg-blue-50/30 group"
           >
             <input
               ref={fileInputRef}
@@ -261,32 +245,32 @@ export function ExcelImportModal({
               className="hidden"
               onChange={handleFileChange}
             />
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-105 transition-transform">
-              <UploadCloud className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center mx-auto mb-2 group-hover:scale-105 transition-transform">
+              <UploadCloud className="w-5 h-5" />
             </div>
-            <div className="font-bold text-sm text-white">
+            <div className="font-bold text-xs text-slate-800">
               Bấm để chọn file Excel hoặc kéo thả file vào đây
             </div>
-            <p className="text-slate-500 text-[11px] mt-1">
-              Hỗ trợ các định dạng .xlsx, .xls, .csv (Tối đa 1.000 dòng/lần)
+            <p className="text-slate-500 text-[11px] mt-0.5">
+              Hỗ trợ định dạng .xlsx, .xls, .csv (Tối đa 1.000 dòng/lần)
             </p>
           </div>
         ) : (
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+          <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
-                <FileCheck className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center">
+                <FileCheck className="w-4 h-4" />
               </div>
               <div>
-                <div className="font-bold text-white text-sm">{fileName}</div>
-                <div className="flex items-center gap-3 text-[11px] mt-0.5">
-                  <span className="text-slate-400">Tổng số: <strong>{parsedRows.length}</strong> dòng</span>
-                  <span>•</span>
-                  <span className="text-emerald-400 font-semibold">Hợp lệ: {validRows.length} dòng</span>
+                <div className="font-bold text-slate-800 text-xs">{fileName}</div>
+                <div className="flex items-center gap-2 text-[11px] mt-0.5">
+                  <span className="text-slate-500">Tổng số: <strong>{parsedRows.length}</strong> dòng</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-emerald-700 font-medium">Hợp lệ: {validRows.length} dòng</span>
                   {invalidRows.length > 0 && (
                     <>
-                      <span>•</span>
-                      <span className="text-rose-400 font-semibold">Lỗi: {invalidRows.length} dòng</span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-rose-700 font-medium">Lỗi: {invalidRows.length} dòng</span>
                     </>
                   )}
                 </div>
@@ -296,7 +280,7 @@ export function ExcelImportModal({
             <button
               type="button"
               onClick={handleResetFile}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-rose-600/80 text-slate-300 hover:text-white transition-colors"
+              className="p-1.5 rounded-md border border-slate-300 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-500 hover:text-rose-600 transition-colors"
               title="Đổi file khác"
             >
               <Trash2 className="w-4 h-4" />
@@ -306,61 +290,61 @@ export function ExcelImportModal({
 
         {/* Loading Spinner */}
         {loading && (
-          <div className="py-8 text-center text-slate-400 flex items-center justify-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+          <div className="py-6 text-center text-slate-500 flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
             <span>Đang đọc và kiểm tra dữ liệu file Excel...</span>
           </div>
         )}
 
         {/* Preview Grid */}
         {parsedRows.length > 0 && !loading && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
-              <span>Bản xem trước dữ liệu (Hiển thị tối đa 15 dòng đầu):</span>
-              <span className="text-emerald-400 font-bold">{validRows.length} dòng sẵn sàng nạp</span>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
+              <span>Bản xem trước dữ liệu (Tối đa 15 dòng đầu):</span>
+              <span className="text-emerald-700 font-semibold">{validRows.length} dòng sẵn sàng nạp</span>
             </div>
 
-            <div className="border border-slate-800 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+            <div className="border border-slate-200 rounded-lg overflow-hidden max-h-60 overflow-y-auto bg-white">
               <table className="w-full text-left text-[11px]">
-                <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 sticky top-0 uppercase text-[10px]">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 sticky top-0 uppercase text-[10px] font-bold">
                   <tr>
-                    <th className="py-2.5 px-3">#</th>
-                    <th className="py-2.5 px-3">Tình trạng</th>
+                    <th className="py-2 px-3">#</th>
+                    <th className="py-2 px-3">Tình trạng</th>
                     {columns.map((c) => (
-                      <th key={c.key} className="py-2.5 px-3">
-                        {c.label} {c.required && <span className="text-rose-400">*</span>}
+                      <th key={c.key} className="py-2 px-3">
+                        {c.label} {c.required && <span className="text-rose-500">*</span>}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                <tbody className="divide-y divide-slate-100 text-slate-700">
                   {parsedRows.slice(0, 15).map((row, idx) => {
                     const rowError = invalidRows.find((ir) => ir.index === idx + 1);
 
                     return (
                       <tr
                         key={idx}
-                        className={rowError ? "bg-rose-950/20 text-rose-200" : "hover:bg-slate-900"}
+                        className={rowError ? "bg-rose-50/60 text-rose-900" : "hover:bg-slate-50"}
                       >
-                        <td className="py-2 px-3 font-mono text-slate-500">{idx + 1}</td>
+                        <td className="py-2 px-3 font-mono text-slate-400">{idx + 1}</td>
                         <td className="py-2 px-3 whitespace-nowrap">
                           {rowError ? (
                             <span
-                              className="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                              className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-rose-100 text-rose-700 border border-rose-200"
                               title={rowError.errors.join(", ")}
                             >
                               {rowError.errors[0]}
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 w-max">
-                              <CheckCircle2 className="w-3 h-3" />
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1 w-max">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                               Hợp lệ
                             </span>
                           )}
                         </td>
                         {columns.map((c) => (
                           <td key={c.key} className="py-2 px-3 max-w-[180px] truncate">
-                            {row[c.key] || <span className="text-slate-600">—</span>}
+                            {row[c.key] || <span className="text-slate-400">—</span>}
                           </td>
                         ))}
                       </tr>
@@ -371,8 +355,8 @@ export function ExcelImportModal({
             </div>
 
             {invalidRows.length > 0 && (
-              <div className="p-3 rounded-xl bg-amber-950/30 border border-amber-800/40 text-[11px] text-amber-300 flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="p-3 rounded-md bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   Hệ thống tìm thấy <strong>{invalidRows.length}</strong> dòng thiếu thông tin bắt buộc. Khi bấm "Xác nhận Import", hệ thống sẽ <strong>chỉ nạp {validRows.length} dòng hợp lệ</strong> và tự động bỏ qua các dòng lỗi.
                 </div>
@@ -382,14 +366,14 @@ export function ExcelImportModal({
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
           <button
             type="button"
             onClick={() => {
               handleResetFile();
               onClose();
             }}
-            className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-medium"
+            className="px-3.5 py-1.5 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold"
           >
             Đóng
           </button>
@@ -397,16 +381,16 @@ export function ExcelImportModal({
             type="button"
             disabled={validRows.length === 0 || importing}
             onClick={handleExecuteImport}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-lg shadow-emerald-600/25 transition-all disabled:opacity-40 disabled:pointer-events-none flex items-center gap-2"
+            className="px-4 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1.5 shadow-xs"
           >
             {importing ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 <span>Đang nhập dữ liệu...</span>
               </>
             ) : (
               <>
-                <FileCheck className="w-4 h-4" />
+                <FileCheck className="w-3.5 h-3.5" />
                 <span>Xác nhận Import ({validRows.length} bản ghi)</span>
               </>
             )}

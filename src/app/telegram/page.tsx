@@ -30,7 +30,7 @@ import {
 import { formatDateTimeVN } from "@/lib/notifications";
 import { useLoading } from "@/components/LoadingProvider";
 import { ActionButton } from "@/components/ActionButton";
-import { SectionLoading } from "@/components/SectionLoading";
+import { TelegramConfigSkeleton } from "@/components/Skeleton";
 
 export default function TelegramAndNotificationConfigPage() {
   const { success, error } = useToast();
@@ -328,7 +328,7 @@ export default function TelegramAndNotificationConfigPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#F1F3F6] text-[#172033] flex flex-col">
       <Header
         title="Quản lý Thông báo & Tích hợp Telegram (M6)"
         subtitle="Cấu hình truyền phát thông báo tập trung trên Feed và phân phối tin tức tức thời tới Telegram Group"
@@ -336,471 +336,473 @@ export default function TelegramAndNotificationConfigPage() {
 
       <div className="p-6 md:p-8 space-y-6 max-w-7xl w-full mx-auto flex-1">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+        <div className="flex items-center gap-2 border-b border-[#DDE2E9] pb-2">
           <button
             type="button"
             onClick={() => setActiveTab("telegram")}
-            className={`px-5 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all ${
+            className={`px-4 py-2 rounded-md text-xs font-semibold flex items-center gap-2 transition-colors ${
               activeTab === "telegram"
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-                : "bg-slate-900/80 text-slate-400 hover:text-white hover:bg-slate-800"
+                ? "bg-[#2457A7] text-white shadow-xs"
+                : "bg-white text-[#64748B] border border-[#DDE2E9] hover:bg-[#F8FAFC] hover:text-[#172033]"
             }`}
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-3.5 h-3.5" />
             <span>Cài đặt Telegram Bot (13.9)</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab("settings")}
-            className={`px-5 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all ${
+            className={`px-4 py-2 rounded-md text-xs font-semibold flex items-center gap-2 transition-colors ${
               activeTab === "settings"
-                ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-cyan-600/30"
-                : "bg-slate-900/80 text-slate-400 hover:text-white hover:bg-slate-800"
+                ? "bg-[#2457A7] text-white shadow-xs"
+                : "bg-white text-[#64748B] border border-[#DDE2E9] hover:bg-[#F8FAFC] hover:text-[#172033]"
             }`}
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-3.5 h-3.5" />
             <span>Ma trận Cấu hình Thông báo (13.10)</span>
           </button>
         </div>
 
         {loading ? (
-          <SectionLoading text="Đang tải dữ liệu cấu hình Telegram & Thông báo..." minHeight="380px" />
+          <TelegramConfigSkeleton />
         ) : (
           <>
             {/* TAB 1: CẤU HÌNH TELEGRAM BOT (13.9) */}
             {activeTab === "telegram" && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-5">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/20">
-                      <Send className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h2 className="text-base font-extrabold text-white">Kết nối Telegram Bot</h2>
-                      <p className="text-xs text-slate-400">Gửi thông báo tự động tới nhóm làm việc</p>
-                    </div>
-                  </div>
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="p-5 rounded-lg bg-white border border-[#DDE2E9] shadow-xs space-y-5">
+                    <div className="flex items-center justify-between pb-3 border-b border-[#EDF1F5]">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-md bg-[#E5EDFA] text-[#2457A7] border border-[#CBD5E1] flex items-center justify-center shrink-0">
+                          <Send className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h2 className="text-sm font-bold text-[#172033]">Kết nối Telegram Bot</h2>
+                          <p className="text-xs text-[#64748B]">Gửi thông báo tự động tới nhóm làm việc</p>
+                        </div>
+                      </div>
 
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border ${
-                        enabled && lastTestStatus === "success"
-                          ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                          : enabled
-                          ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
-                          : "bg-slate-800 text-slate-400 border-slate-700"
-                      }`}
-                    >
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          enabled && lastTestStatus === "success"
-                            ? "bg-emerald-400 animate-pulse"
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${
+                            enabled && lastTestStatus === "success"
+                              ? "bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0]"
+                              : enabled
+                              ? "bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]"
+                              : "bg-[#F8FAFC] text-[#64748B] border-[#DDE2E9]"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              enabled && lastTestStatus === "success"
+                                ? "bg-[#15803D]"
+                                : enabled
+                                ? "bg-[#B45309]"
+                                : "bg-slate-400"
+                            }`}
+                          />
+                          {enabled && lastTestStatus === "success"
+                            ? "Đang kết nối"
                             : enabled
-                            ? "bg-amber-400"
-                            : "bg-slate-500"
-                        }`}
-                      />
-                      {enabled && lastTestStatus === "success"
-                        ? "Đang kết nối"
-                        : enabled
-                        ? "Chưa test kết nối"
-                        : "Đã tắt"}
-                    </span>
+                            ? "Chưa kiểm tra"
+                            : "Đã tắt"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleSaveTelegram} className="space-y-4 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-[#172033]">
+                            Tên Bot (Bot Name)
+                          </label>
+                          <input
+                            type="text"
+                            value={botName}
+                            onChange={(e) => setBotName(e.target.value)}
+                            placeholder="VD: ISF Cần Thơ Bot"
+                            className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-[#172033]">
+                            Bot Username
+                          </label>
+                          <input
+                            type="text"
+                            value={botUsername}
+                            onChange={(e) => setBotUsername(e.target.value)}
+                            placeholder="VD: @ISF_Can_Tho_Bot"
+                            className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs font-mono focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5 sm:col-span-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-semibold text-[#172033]">
+                              Bot Token (Secret) <span className="text-rose-500">*</span>
+                            </label>
+                            <span className="text-[11px] text-[#15803D] font-medium flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3" /> Mã hóa AES-256 an toàn
+                            </span>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type={showToken ? "text" : "password"}
+                              value={botToken}
+                              onChange={(e) => setBotToken(e.target.value)}
+                              placeholder={tokenPreview ? `Đã lưu: ${tokenPreview}` : "Nhập Bot Token từ @BotFather..."}
+                              className="w-full px-3 py-2 pr-10 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs font-mono focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowToken(!showToken)}
+                              className="absolute right-2.5 top-2 text-[#94A3B8] hover:text-[#172033] p-0.5"
+                            >
+                              {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-[#172033]">
+                            Chat ID của Nhóm <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={chatId}
+                            onChange={(e) => setChatId(e.target.value)}
+                            placeholder="VD: -100xxxxxxxxxx"
+                            className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs font-mono focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-[#172033]">
+                            Tên Nhóm / Group Name
+                          </label>
+                          <input
+                            type="text"
+                            value={chatName}
+                            onChange={(e) => setChatName(e.target.value)}
+                            placeholder="VD: ISF Cần Thơ News"
+                            className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] transition-colors"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2 pt-2">
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={enabled}
+                              onChange={(e) => setEnabled(e.target.checked)}
+                              className="w-4 h-4 rounded border-[#DDE2E9] text-[#2457A7] focus:ring-[#2457A7]"
+                            />
+                            <span className="text-xs font-semibold text-[#172033]">
+                              Kích hoạt truyền phát thông báo qua Telegram
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-[#EDF1F5] flex-wrap gap-2">
+                        <ActionButton
+                          type="button"
+                          variant="secondary"
+                          onClick={handleTestConnection}
+                          isLoading={testingTelegram}
+                          loadingText="Đang gửi tin thử..."
+                          icon={<Send className="w-3.5 h-3.5" />}
+                          className="px-3.5 py-1.5 text-xs font-medium border border-[#DDE2E9] hover:bg-[#F8FAFC] text-[#172033]"
+                        >
+                          Kiểm tra kết nối & Gửi tin nhắn thử
+                        </ActionButton>
+
+                        <ActionButton
+                          type="submit"
+                          variant="primary"
+                          isLoading={savingTelegram}
+                          loadingText="Đang lưu..."
+                          className="px-5 py-1.5 text-xs font-semibold bg-[#2457A7] hover:bg-[#1C4585] text-white rounded-md shadow-xs"
+                        >
+                          Lưu cấu hình Telegram
+                        </ActionButton>
+                      </div>
+                    </form>
                   </div>
                 </div>
 
-                <form onSubmit={handleSaveTelegram} className="space-y-4 text-xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                        Tên Bot (Bot Name)
-                      </label>
-                      <input
-                        type="text"
-                        value={botName}
-                        onChange={(e) => setBotName(e.target.value)}
-                        placeholder="VD: ISF Cần Thơ Bot"
-                        className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-700 text-white text-sm"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                        Bot Username
-                      </label>
-                      <input
-                        type="text"
-                        value={botUsername}
-                        onChange={(e) => setBotUsername(e.target.value)}
-                        placeholder="VD: @ISF_Can_Tho_Bot"
-                        className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-700 text-white text-sm font-mono"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                          Bot Token (Secret) <span className="text-rose-400">*</span>
-                        </label>
-                        <span className="text-[10px] text-emerald-400">Mã hóa AES-256 an toàn trong database</span>
-                      </div>
-                      <div className="relative">
-                        <input
-                          type={showToken ? "text" : "password"}
-                          value={botToken}
-                          onChange={(e) => setBotToken(e.target.value)}
-                          placeholder={tokenPreview ? `Đã lưu: ${tokenPreview}` : "Nhập Bot Token từ @BotFather..."}
-                          className="w-full px-4 py-2.5 pr-10 rounded-2xl bg-slate-950 border border-slate-700 text-white text-sm font-mono"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowToken(!showToken)}
-                          className="absolute right-3 top-2.5 text-slate-400 hover:text-white p-1"
-                        >
-                          {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                        Chat ID của Nhóm <span className="text-rose-400">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={chatId}
-                        onChange={(e) => setChatId(e.target.value)}
-                        placeholder="VD: -100xxxxxxxxxx hoặc -5165048117"
-                        className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-700 text-white text-sm font-mono"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                        Tên Nhóm / Group Name
-                      </label>
-                      <input
-                        type="text"
-                        value={chatName}
-                        onChange={(e) => setChatName(e.target.value)}
-                        placeholder="VD: ISF Cần Thơ News"
-                        className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-700 text-white text-sm"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2 pt-2">
-                      <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={enabled}
-                          onChange={(e) => setEnabled(e.target.checked)}
-                          className="w-4 h-4 rounded border-slate-700 text-blue-600 focus:ring-0"
-                        />
-                        <span className="text-xs font-bold text-white">
-                          Bật chức năng truyền phát thông báo qua Telegram
-                        </span>
-                      </label>
-                    </div>
+                {/* Right side: Instructions & Deliveries Log */}
+                <div className="space-y-6">
+                  <div className="p-4 rounded-lg bg-[#F8FAFC] border border-[#DDE2E9] text-xs space-y-2.5">
+                    <h3 className="font-bold text-[#172033] flex items-center gap-1.5">
+                      <HelpCircle className="w-4 h-4 text-[#2457A7]" />
+                      Hướng dẫn cấu hình Bot Telegram
+                    </h3>
+                    <ol className="list-decimal list-inside space-y-1.5 text-[#64748B] text-[11px] leading-relaxed">
+                      <li>Mở Telegram, tìm <strong>@BotFather</strong> và gửi lệnh <code className="bg-white px-1.5 py-0.5 rounded border border-[#DDE2E9] font-mono text-[#2457A7]">/newbot</code>.</li>
+                      <li>Sao chép <strong>HTTP API Token</strong> dán vào ô Bot Token ở trên.</li>
+                      <li>Thêm bot vừa tạo vào nhóm Telegram làm việc và cấp quyền Quản trị (Admin).</li>
+                      <li>Lấy <strong>Chat ID</strong> của nhóm (có dấu trừ phía trước, VD: <code className="bg-white px-1.5 py-0.5 rounded border border-[#DDE2E9] font-mono text-[#2457A7]">-100xxxxxxxxxx</code>).</li>
+                      <li>Bấm <strong>Kiểm tra kết nối</strong> để gửi tin nhắn xác nhận.</li>
+                    </ol>
                   </div>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-slate-800 flex-wrap gap-2">
+                  {/* Delivery History */}
+                  <div className="p-4 rounded-lg bg-white border border-[#DDE2E9] shadow-xs space-y-3 text-xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#EDF1F5]">
+                      <h3 className="font-bold text-[#172033] flex items-center gap-1.5">
+                        <Activity className="w-4 h-4 text-[#15803D]" />
+                        Lịch sử phát tin gần nhất
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={fetchDeliveries}
+                        className="text-[#64748B] hover:text-[#172033] p-1"
+                        title="Làm mới"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${loadingDeliveries ? "animate-spin" : ""}`} />
+                      </button>
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto divide-y divide-[#EDF1F5] pr-1">
+                      {deliveries.length === 0 ? (
+                        <div className="py-6 text-center text-[#94A3B8] text-xs">
+                          Chưa có nhật ký gửi tin nhắn Telegram.
+                        </div>
+                      ) : (
+                        deliveries.map((d) => (
+                          <div key={d.id} className="py-2.5 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                  d.status === "sent"
+                                    ? "bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]"
+                                    : d.status === "failed"
+                                    ? "bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA]"
+                                    : "bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]"
+                                }`}
+                              >
+                                {d.status === "sent" ? "Đã gửi" : d.status === "failed" ? "Lỗi" : "Đang chờ"}
+                              </span>
+                              <span className="text-[11px] text-[#94A3B8] font-mono">
+                                {d.sentAt ? formatDateTimeVN(new Date(d.sentAt)) : "—"}
+                              </span>
+                            </div>
+                            <p className="text-[#172033] text-xs font-medium truncate">
+                              {d.notification?.title || "Thông báo Telegram"}
+                            </p>
+                            {d.errorMessage && (
+                              <p className="text-[11px] text-[#B91C1C] leading-tight">
+                                {d.errorMessage}
+                              </p>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: MA TRẬN CẤU HÌNH THÔNG BÁO (13.10, 13.14) */}
+            {activeTab === "settings" && (
+              <div className="space-y-6">
+                {/* Top Bar with Trigger and Save Actions */}
+                <div className="p-4 rounded-lg bg-white border border-[#DDE2E9] shadow-xs flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-bold text-[#172033]">Ma trận Kênh phân phối Thông báo</h2>
+                    <p className="text-xs text-[#64748B]">
+                      Cấu hình sự kiện nào hiển thị trên Feed web và sự kiện nào đẩy tức thời ra nhóm Telegram
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
                     <ActionButton
                       type="button"
                       variant="secondary"
-                      onClick={handleTestConnection}
-                      isLoading={testingTelegram}
-                      loadingText="Đang gửi tin thử..."
-                      icon={<Send className="w-4 h-4" />}
-                      className="px-4 py-2.5 text-xs font-bold text-cyan-300"
+                      onClick={handleRunRemindersNow}
+                      isLoading={runningReminders}
+                      loadingText="Đang quét nhắc việc..."
+                      icon={<Play className="w-3.5 h-3.5" />}
+                      className="px-3.5 py-1.5 text-xs font-medium border border-[#DDE2E9] hover:bg-[#F8FAFC] text-[#172033]"
                     >
-                      Kiểm tra kết nối & Gửi tin nhắn thử
+                      Quét nhắc việc ngay
                     </ActionButton>
 
                     <ActionButton
                       type="submit"
                       variant="primary"
-                      isLoading={savingTelegram}
+                      onClick={handleSaveSettings}
+                      isLoading={savingSettings}
                       loadingText="Đang lưu..."
-                      className="px-6 py-2.5 text-xs font-bold"
+                      className="px-5 py-1.5 text-xs font-semibold bg-[#2457A7] hover:bg-[#1C4585] text-white rounded-md shadow-xs"
                     >
-                      Lưu cấu hình Telegram
+                      Lưu ma trận cấu hình
                     </ActionButton>
                   </div>
-                </form>
-              </div>
-            </div>
-
-            {/* Right side: Instructions & Deliveries Log */}
-            <div className="space-y-6">
-              <div className="p-5 rounded-3xl bg-slate-900/60 border border-slate-800 text-xs space-y-3">
-                <h3 className="font-bold text-white flex items-center gap-1.5">
-                  <HelpCircle className="w-4 h-4 text-cyan-400" />
-                  Hướng dẫn cấu hình Bot Telegram
-                </h3>
-                <ol className="list-decimal list-inside space-y-1.5 text-slate-400 text-[11px] leading-relaxed">
-                  <li>Mở Telegram, tìm <strong>@BotFather</strong> và gõ <code className="text-cyan-300">/newbot</code> để tạo bot.</li>
-                  <li>Sao chép <strong>HTTP API Token</strong> dán vào ô Bot Token ở trên.</li>
-                  <li>Thêm bot vừa tạo vào nhóm Telegram làm việc và cấp quyền Admin.</li>
-                  <li>Lấy <strong>Chat ID</strong> của nhóm (có dấu trừ phía trước, VD: <code className="text-cyan-300">-100xxxxxxxxxx</code>).</li>
-                  <li>Bấm nút <strong>Kiểm tra kết nối</strong> để xác minh tin nhắn tới nhóm.</li>
-                </ol>
-              </div>
-
-              {/* Delivery History */}
-              <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3 text-xs">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-white flex items-center gap-1.5">
-                    <Activity className="w-4 h-4 text-emerald-400" />
-                    Lịch sử gửi Telegram
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={fetchDeliveries}
-                    className="text-slate-400 hover:text-white p-1"
-                    title="Làm mới"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${loadingDeliveries ? "animate-spin" : ""}`} />
-                  </button>
                 </div>
 
-                <div className="max-h-64 overflow-y-auto divide-y divide-slate-800/80 pr-1">
-                  {deliveries.length === 0 ? (
-                    <div className="py-6 text-center text-slate-500 text-[11px]">
-                      Chưa có nhật ký gửi tin nhắn Telegram.
-                    </div>
-                  ) : (
-                    deliveries.map((d) => (
-                      <div key={d.id} className="py-2.5 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              d.status === "sent"
-                                ? "bg-emerald-500/15 text-emerald-400"
-                                : d.status === "failed"
-                                ? "bg-rose-500/15 text-rose-400"
-                                : "bg-amber-500/15 text-amber-400"
-                            }`}
-                          >
-                            {d.status === "sent" ? "Đã gửi" : d.status === "failed" ? "Lỗi" : "Đang chờ"}
-                          </span>
-                          <span className="text-[10px] text-slate-500">
-                            {d.sentAt ? formatDateTimeVN(new Date(d.sentAt)) : "—"}
-                          </span>
-                        </div>
-                        <p className="text-white text-xs truncate">
-                          {d.notification?.title || "Thông báo Telegram"}
-                        </p>
-                        {d.errorMessage && (
-                          <p className="text-[10px] text-rose-400 leading-tight">
-                            {d.errorMessage}
-                          </p>
-                        )}
+                {/* Specialized Reminder Cards (13.5 & 13.7) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Card 1: Nhắc QLYC đến hạn (13.5) */}
+                  <div className="p-4 rounded-lg bg-white border border-[#DDE2E9] shadow-xs space-y-3">
+                    <div className="flex items-center gap-2.5 pb-2 border-b border-[#EDF1F5]">
+                      <div className="w-8 h-8 rounded-md bg-[#E5EDFA] text-[#2457A7] border border-[#CBD5E1] flex items-center justify-center shrink-0">
+                        <Clock className="w-4 h-4" />
                       </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: MA TRẬN CẤU HÌNH THÔNG BÁO (13.10, 13.14) */}
-        {activeTab === "settings" && (
-          <div className="space-y-6">
-            {/* Top Bar with Trigger and Save Actions */}
-            <div className="p-4 rounded-3xl bg-slate-900/90 border border-slate-800 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-extrabold text-white">Ma trận Kênh phân phối Thông báo</h2>
-                <p className="text-xs text-slate-400">
-                  Cấu hình sự kiện nào xuất hiện trên Feed web và sự kiện nào đẩy ra nhóm Telegram
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <ActionButton
-                  type="button"
-                  variant="secondary"
-                  onClick={handleRunRemindersNow}
-                  isLoading={runningReminders}
-                  loadingText="Đang quét nhắc việc..."
-                  icon={<Play className="w-3.5 h-3.5" />}
-                  className="px-4 py-2 text-xs font-bold text-cyan-300"
-                >
-                  Quét nhắc việc ngay
-                </ActionButton>
-
-                <ActionButton
-                  type="button"
-                  variant="primary"
-                  onClick={handleSaveSettings}
-                  isLoading={savingSettings}
-                  loadingText="Đang lưu..."
-                  className="px-6 py-2 text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-500/20"
-                >
-                  Lưu ma trận cấu hình
-                </ActionButton>
-              </div>
-            </div>
-
-            {/* Specialized Reminder Cards (13.5 & 13.7) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Card 1: Nhắc QLYC đến hạn (13.5) */}
-              <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white">Cấu hình Nhắc QLYC đến hạn (13.5)</h3>
-                    <p className="text-[11px] text-slate-400">Tự động nhắc hạn hoàn thành theo mốc ngày</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3 pt-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-300">Nhắc trước thời hạn:</span>
-                    <select
-                      value={remindDays}
-                      onChange={(e) => setRemindDays(Number(e.target.value))}
-                      className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold"
-                    >
-                      <option value={1}>1 ngày trước hạn</option>
-                      <option value={2}>2 ngày trước hạn</option>
-                      <option value={3}>3 ngày trước hạn</option>
-                      <option value={5}>5 ngày trước hạn</option>
-                    </select>
-                  </div>
-
-                  <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5 text-[11px] text-slate-400">
-                    <div className="flex items-center gap-1.5 text-cyan-300 font-semibold">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Cơ chế chống gửi trùng lặp (Anti-spam):</span>
-                    </div>
-                    <p>Mỗi mốc nhắc (Trước hạn, Đến hạn hôm nay, Quá hạn) chỉ gửi đúng 1 lần cho mỗi yêu cầu trong ngày.</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 2: Nhắc Chấm công (13.7, 13.12) */}
-              <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                    <Calendar className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-white">Cấu hình Nhắc Chấm công (13.7)</h3>
-                    <p className="text-[11px] text-slate-400">Khung giờ nhắc chấm công hàng ngày</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
-                  <div>
-                    <label className="text-slate-400 block mb-1">Giờ buổi sáng:</label>
-                    <input
-                      type="time"
-                      value={morningTime}
-                      onChange={(e) => setMorningTime(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono font-bold"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 block mb-1">Giờ buổi chiều:</label>
-                    <input
-                      type="time"
-                      value={eveningTime}
-                      onChange={(e) => setEveningTime(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono font-bold"
-                    />
-                  </div>
-
-                  <div className="col-span-2 pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer text-[11px]">
-                      <input
-                        type="checkbox"
-                        checked={skipWeekends}
-                        onChange={(e) => setSkipWeekends(e.target.checked)}
-                        className="w-4 h-4 rounded border-slate-700 text-blue-600 focus:ring-0"
-                      />
-                      <span className="text-slate-300">
-                        Không gửi nhắc chấm công vào ngày nghỉ cuối tuần (Thứ 7 & Chủ Nhật)
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Matrix Table by Category */}
-            <div className="space-y-6">
-              {categories.map((cat) => {
-                const eventsInCat = eventSettings.filter((e) => e.category === cat.id);
-                if (eventsInCat.length === 0) return null;
-
-                return (
-                  <div key={cat.id} className="rounded-3xl border border-slate-800 bg-slate-900/60 overflow-hidden shadow-xl">
-                    <div className="px-6 py-3.5 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
-                      <h3 className="text-xs font-black uppercase tracking-wider text-cyan-300">
-                        {cat.label}
-                      </h3>
-                      <span className="text-[10px] text-slate-500">{eventsInCat.length} sự kiện</span>
+                      <div>
+                        <h3 className="text-xs font-bold text-[#172033]">Cấu hình Nhắc QLYC đến hạn (13.5)</h3>
+                        <p className="text-[11px] text-[#64748B]">Tự động nhắc hạn hoàn thành theo mốc ngày</p>
+                      </div>
                     </div>
 
-                    <div className="divide-y divide-slate-800/80 text-xs">
-                      {eventsInCat.map((evt) => (
-                        <div
-                          key={evt.eventCode}
-                          className="px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-800/30 transition-colors"
+                    <div className="space-y-3 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[#64748B] font-medium">Nhắc trước thời hạn:</span>
+                        <select
+                          value={remindDays}
+                          onChange={(e) => setRemindDays(Number(e.target.value))}
+                          className="px-3 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] font-medium text-xs focus:ring-1 focus:ring-[#2457A7]"
                         >
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-white text-xs">{evt.name}</span>
-                              <span className="font-mono text-[10px] text-slate-500 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                                {evt.eventCode}
-                              </span>
-                            </div>
-                            {evt.description && (
-                              <p className="text-[11px] text-slate-400">{evt.description}</p>
-                            )}
-                          </div>
+                          <option value={1}>1 ngày trước hạn</option>
+                          <option value={2}>2 ngày trước hạn</option>
+                          <option value={3}>3 ngày trước hạn</option>
+                          <option value={5}>5 ngày trước hạn</option>
+                        </select>
+                      </div>
 
-                          <div className="flex items-center gap-6 shrink-0">
-                            <label className="flex items-center gap-2 cursor-pointer select-none">
-                              <input
-                                type="checkbox"
-                                checked={evt.feedEnabled}
-                                onChange={() => handleToggleEvent(evt.eventCode, "feed")}
-                                className="w-4 h-4 rounded border-slate-700 text-blue-600 focus:ring-0"
-                              />
-                              <span className="text-xs text-slate-300">Feed Web</span>
-                            </label>
-
-                            <label className="flex items-center gap-2 cursor-pointer select-none">
-                              <input
-                                type="checkbox"
-                                checked={evt.telegramEnabled}
-                                onChange={() => handleToggleEvent(evt.eventCode, "telegram")}
-                                className="w-4 h-4 rounded border-slate-700 text-cyan-500 focus:ring-0"
-                              />
-                              <span className="text-xs text-cyan-300 font-semibold">Telegram Bot</span>
-                            </label>
-                          </div>
+                      <div className="p-3 rounded-md bg-[#F8FAFC] border border-[#DDE2E9] space-y-1 text-[11px] text-[#64748B]">
+                        <div className="flex items-center gap-1.5 text-[#2457A7] font-semibold">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Cơ chế chống gửi trùng lặp (Anti-spam):</span>
                         </div>
-                      ))}
+                        <p>Mỗi mốc nhắc (Trước hạn, Đến hạn hôm nay, Quá hạn) chỉ gửi đúng 1 lần cho mỗi yêu cầu trong ngày.</p>
+                      </div>
                     </div>
                   </div>
-                );
-              })}
+
+                  {/* Card 2: Nhắc Chấm công (13.7, 13.12) */}
+                  <div className="p-4 rounded-lg bg-white border border-[#DDE2E9] shadow-xs space-y-3">
+                    <div className="flex items-center gap-2.5 pb-2 border-b border-[#EDF1F5]">
+                      <div className="w-8 h-8 rounded-md bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] flex items-center justify-center shrink-0">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-[#172033]">Cấu hình Nhắc Chấm công (13.7)</h3>
+                        <p className="text-[11px] text-[#64748B]">Khung giờ nhắc chấm công nhân sự hàng ngày</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="text-[#64748B] block mb-1 font-medium">Giờ buổi sáng:</label>
+                        <input
+                          type="time"
+                          value={morningTime}
+                          onChange={(e) => setMorningTime(e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] font-mono text-xs focus:ring-1 focus:ring-[#2457A7]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[#64748B] block mb-1 font-medium">Giờ buổi chiều:</label>
+                        <input
+                          type="time"
+                          value={eveningTime}
+                          onChange={(e) => setEveningTime(e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] font-mono text-xs focus:ring-1 focus:ring-[#2457A7]"
+                        />
+                      </div>
+
+                      <div className="col-span-2 pt-1">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="checkbox"
+                            checked={skipWeekends}
+                            onChange={(e) => setSkipWeekends(e.target.checked)}
+                            className="w-4 h-4 rounded border-[#DDE2E9] text-[#2457A7] focus:ring-[#2457A7]"
+                          />
+                          <span className="text-[#172033]">
+                            Không gửi nhắc chấm công vào ngày nghỉ cuối tuần (Thứ 7 & Chủ Nhật)
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Matrix Table by Category */}
+                <div className="space-y-4">
+                  {categories.map((cat) => {
+                    const eventsInCat = eventSettings.filter((e) => e.category === cat.id);
+                    if (eventsInCat.length === 0) return null;
+
+                    return (
+                      <div key={cat.id} className="rounded-lg border border-[#DDE2E9] bg-white overflow-hidden shadow-xs">
+                        <div className="px-4 py-2.5 bg-[#F8FAFC] border-b border-[#DDE2E9] flex items-center justify-between">
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-[#172033]">
+                            {cat.label}
+                          </h3>
+                          <span className="text-[11px] text-[#64748B] font-medium">{eventsInCat.length} sự kiện</span>
+                        </div>
+
+                        <div className="divide-y divide-[#EDF1F5] text-xs">
+                          {eventsInCat.map((evt) => (
+                            <div
+                              key={evt.eventCode}
+                              className="px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#F8FAFC] transition-colors"
+                            >
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-[#172033] text-xs">{evt.name}</span>
+                                  <span className="font-mono text-[10px] text-[#64748B] bg-[#F8FAFC] px-1.5 py-0.5 rounded border border-[#DDE2E9]">
+                                    {evt.eventCode}
+                                  </span>
+                                </div>
+                                {evt.description && (
+                                  <p className="text-[11px] text-[#64748B]">{evt.description}</p>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-6 shrink-0">
+                                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={evt.feedEnabled}
+                                    onChange={() => handleToggleEvent(evt.eventCode, "feed")}
+                                    className="w-4 h-4 rounded border-[#DDE2E9] text-[#2457A7] focus:ring-[#2457A7]"
+                                  />
+                                  <span className="text-xs text-[#172033]">Feed Web</span>
+                                </label>
+
+                                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={evt.telegramEnabled}
+                                    onChange={() => handleToggleEvent(evt.eventCode, "telegram")}
+                                    className="w-4 h-4 rounded border-[#DDE2E9] text-[#2457A7] focus:ring-[#2457A7]"
+                                  />
+                                  <span className="text-xs text-[#2457A7] font-semibold">Telegram Bot</span>
+                                </label>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
-        </>
-      )}
+            )}
+          </>
+        )}
+      </div>
     </div>
-  </div>
   );
 }

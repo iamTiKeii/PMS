@@ -1,11 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 import {
   UserCog,
+  ShieldCheck,
   Search,
   Plus,
   Key,
@@ -28,6 +31,7 @@ import { ExcelImportModal, ColumnDefinition } from "@/components/ExcelImportModa
 
 export default function UsersPage() {
   const { success, error } = useToast();
+  const { confirm } = useConfirm();
   const [users, setUsers] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -235,9 +239,13 @@ export default function UsersPage() {
   };
 
   const handleDeleteUser = async (u: any) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản @${u.username} không?`)) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Xóa tài khoản người dùng?",
+      message: `Bạn có chắc chắn muốn xóa tài khoản @${u.username} không? Người dùng này sẽ bị hủy quyền truy cập hệ thống ngay lập tức.`,
+      confirmText: "Xóa tài khoản",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/users/${u.id}`, { method: "DELETE" });
@@ -288,41 +296,69 @@ export default function UsersPage() {
     }
   };
 
-  const getRoleBadge = (r: string) => {
+  const getRoleBadge = (r: string, userRoles?: any[]) => {
+    if (userRoles && userRoles.length > 0) {
+      return (
+        <div className="flex flex-wrap gap-1">
+          {userRoles.map((ur: any) => (
+            <span
+              key={ur.role.id}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                ur.role.code === "admin"
+                  ? "bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]"
+                  : ur.role.code === "pm"
+                  ? "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]"
+                  : "bg-[#F1F3F6] text-[#334155] border-[#CBD5E1]"
+              }`}
+            >
+              {ur.role.name}
+            </span>
+          ))}
+        </div>
+      );
+    }
+
     switch (r) {
       case "admin":
         return (
-          <span className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-rose-500/15 text-rose-400 border border-rose-500/30 uppercase tracking-wider">
-            Super Admin
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA] uppercase tracking-wider">
+            Quản trị viên (ADMIN)
           </span>
         );
       case "pm":
         return (
-          <span className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase tracking-wider">
-            Project Manager
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE] uppercase tracking-wider">
+            Quản lý dự án (PM)
           </span>
         );
       default:
         return (
-          <span className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-blue-500/15 text-blue-400 border border-blue-500/30 uppercase tracking-wider">
-            Standard User
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#F1F3F6] text-[#334155] border border-[#CBD5E1] uppercase tracking-wider">
+            Nhân viên dự án
           </span>
         );
     }
   };
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#060913] bg-cyber-grid">
+    <div className="flex-1 flex flex-col min-w-0 bg-[#F1F3F6] min-h-screen">
       <Header
-        title="Quản trị Người dùng Tool (IAM / RBAC)"
-        subtitle="Quản lý tài khoản đăng nhập, phân quyền vai trò (Admin, PM, User) và bảo mật chống Brute-force"
+        title="Danh mục Tài khoản Người dùng"
+        subtitle="Quản trị tài khoản đăng nhập, cấp phát mật khẩu, mở khóa tài khoản và liên kết hồ sơ nhân sự"
         actionButton={
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
+            <Link
+              href="/access-control"
+              className="px-3 py-1.5 rounded-md bg-[#18283F] hover:bg-[#233752] text-white font-medium text-xs flex items-center gap-1.5 transition-colors shadow-xs"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#38BDF8]" />
+              <span>Module Quản trị truy cập (RBAC)</span>
+            </Link>
             <button
               onClick={() => setImportModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all border border-slate-800 shadow-md"
+              className="px-3 py-1.5 rounded-md bg-white hover:bg-[#F8FAFC] text-[#172033] font-medium text-xs flex items-center gap-1.5 transition-colors border border-[#DDE2E9] shadow-xs"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-[#15803D]" />
               <span>Import Excel</span>
             </button>
             <button
@@ -334,30 +370,30 @@ export default function UsersPage() {
                 setStaffId("");
                 setAddModalOpen(true);
               }}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-1.5 transition-all"
+              className="px-3.5 py-1.5 rounded-md bg-[#2457A7] hover:bg-[#1C4585] text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              <span>Thêm Người dùng</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Thêm người dùng</span>
             </button>
           </div>
         }
       />
 
-      <div className="p-6 md:p-8 space-y-6 max-w-7xl w-full mx-auto">
+      <div className="p-6 md:p-8 space-y-5 max-w-7xl w-full mx-auto">
         {/* Filter & Search Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-3xl bg-slate-900/80 border border-slate-800/80 shadow-xl backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-lg bg-white border border-[#DDE2E9] shadow-xs">
           <div className="relative w-full sm:w-80">
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm theo tên đăng nhập, họ tên, email..."
-              className="w-full px-4 py-2.5 pl-10 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
+              className="w-full px-3 py-1.5 pl-9 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7]"
             />
-            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-[#94A3B8] absolute left-3 top-2.5" />
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800 overflow-x-auto w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
             {[
               { id: "all", label: "Tất cả vai trò" },
               { id: "admin", label: "Super Admin" },
@@ -367,10 +403,10 @@ export default function UsersPage() {
               <button
                 key={r.id}
                 onClick={() => setRoleFilter(r.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors shrink-0 ${
                   roleFilter === r.id
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/30"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                    ? "bg-[#2457A7] text-white shadow-xs font-semibold"
+                    : "bg-white text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#172033] border border-[#DDE2E9]"
                 }`}
               >
                 {r.label}
@@ -380,51 +416,51 @@ export default function UsersPage() {
         </div>
 
         {/* Users Table */}
-        <div className="rounded-3xl bg-slate-900/80 border border-slate-800/80 overflow-hidden shadow-2xl backdrop-blur-xl">
+        <div className="rounded-lg bg-white border border-[#DDE2E9] overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/90 border-b border-slate-800/80 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              <thead className="bg-[#F8FAFC] border-b border-[#DDE2E9] text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
                 <tr>
-                  <th className="py-4 px-5">Tài khoản & Hồ sơ</th>
-                  <th className="py-4 px-4">Vai trò (Role)</th>
-                  <th className="py-4 px-4">Trạng thái</th>
-                  <th className="py-4 px-4">Sai pass / Khóa</th>
-                  <th className="py-4 px-4">Đăng nhập gần nhất</th>
-                  <th className="py-4 px-4">Ngày tạo</th>
-                  <th className="py-4 px-5 text-right">Thao tác</th>
+                  <th className="py-2.5 px-4">Tài khoản & Hồ sơ</th>
+                  <th className="py-2.5 px-3">Vai trò (Role)</th>
+                  <th className="py-2.5 px-3">Trạng thái</th>
+                  <th className="py-2.5 px-3">Sai pass / Khóa</th>
+                  <th className="py-2.5 px-3">Đăng nhập gần nhất</th>
+                  <th className="py-2.5 px-3">Ngày tạo</th>
+                  <th className="py-2.5 px-4 text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              <tbody className="divide-y divide-[#EDF1F5] text-[#172033]">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-16 text-center text-slate-500 text-xs">
+                    <td colSpan={7} className="py-12 text-center text-[#64748B] text-xs">
                       Đang tải danh sách người dùng...
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-16 text-center text-slate-500 text-xs">
+                    <td colSpan={7} className="py-12 text-center text-[#64748B] text-xs">
                       Không tìm thấy tài khoản người dùng nào phù hợp.
                     </td>
                   </tr>
                 ) : (
                   users.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-800/40 transition-colors group">
-                      <td className="py-4 px-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0 shadow-md ring-1 ring-white/10">
+                    <tr key={u.id} className="hover:bg-[#F8FAFC] transition-colors">
+                      <td className="py-2.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-md bg-[#E5EDFA] border border-[#CBD5E1] text-[#2457A7] flex items-center justify-center font-bold text-xs uppercase shrink-0">
                             {u.staff?.fullName ? u.staff.fullName.charAt(0) : u.username.charAt(0)}
                           </div>
                           <div>
-                            <div className="font-bold text-white text-sm font-mono group-hover:text-blue-300 transition-colors">
+                            <div className="font-semibold text-[#172033] text-xs font-mono">
                               @{u.username}
                             </div>
                             {u.staff ? (
-                              <div className="text-[11px] text-slate-400 mt-0.5">
+                              <div className="text-[11px] text-[#64748B]">
                                 {u.staff.fullName} ({u.staff.staffCode || "N/A"})
                               </div>
                             ) : (
-                              <div className="text-[10px] text-slate-500 italic mt-0.5">
+                              <div className="text-[10px] text-[#94A3B8] italic">
                                 Chưa liên kết hồ sơ nhân sự
                               </div>
                             )}
@@ -432,24 +468,24 @@ export default function UsersPage() {
                         </div>
                       </td>
 
-                      <td className="py-4 px-4">{getRoleBadge(u.role)}</td>
+                      <td className="py-2.5 px-3">{getRoleBadge(u.role, u.userRoles)}</td>
 
-                      <td className="py-4 px-4">
+                      <td className="py-2.5 px-3">
                         <span
-                          className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1.5 w-max ${
+                          className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium items-center gap-1.5 ${
                             u.status === "active"
-                              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                              ? "bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]"
                               : u.status === "locked"
-                              ? "bg-rose-500/15 text-rose-400 border border-rose-500/30 animate-pulse"
-                              : "bg-slate-800 text-slate-400 border border-slate-700"
+                              ? "bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA]"
+                              : "bg-[#F8FAFC] text-[#64748B] border border-[#DDE2E9]"
                           }`}
                         >
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${
                               u.status === "active"
-                                ? "bg-emerald-400"
+                                ? "bg-[#15803D]"
                                 : u.status === "locked"
-                                ? "bg-rose-400"
+                                ? "bg-[#B91C1C]"
                                 : "bg-slate-400"
                             }`}
                           />
@@ -457,27 +493,27 @@ export default function UsersPage() {
                         </span>
                       </td>
 
-                      <td className="py-4 px-4 font-mono text-slate-400">
+                      <td className="py-2.5 px-3 font-mono text-[#64748B]">
                         {u.failedAttempts > 0 ? (
-                          <span className="text-amber-400 font-bold">{u.failedAttempts} lần sai</span>
+                          <span className="text-[#B45309] font-semibold">{u.failedAttempts} lần sai</span>
                         ) : (
-                          <span className="text-slate-600">0</span>
+                          <span className="text-[#94A3B8]">0</span>
                         )}
                       </td>
 
-                      <td className="py-4 px-4 text-slate-400 font-mono text-[11px]">
+                      <td className="py-2.5 px-3 text-[#64748B] font-mono text-[11px]">
                         {u.lastLoginAt ? formatDate(u.lastLoginAt) : "Chưa đăng nhập"}
                       </td>
 
-                      <td className="py-4 px-4 text-slate-500 font-mono text-[11px]">
+                      <td className="py-2.5 px-3 text-[#64748B] font-mono text-[11px]">
                         {formatDate(u.createdAt)}
                       </td>
 
-                      <td className="py-4 px-5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="py-2.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => openResetModal(u)}
-                            className="p-2 rounded-xl bg-slate-950/70 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-slate-800 hover:border-amber-500/30 transition-all"
+                            className="p-1 rounded hover:bg-[#F8FAFC] text-[#64748B] hover:text-[#B45309] transition-colors"
                             title="Đặt lại mật khẩu mới"
                           >
                             <Key className="w-3.5 h-3.5" />
@@ -485,10 +521,10 @@ export default function UsersPage() {
 
                           <button
                             onClick={() => handleToggleLock(u)}
-                            className={`p-2 rounded-xl border transition-all ${
+                            className={`p-1 rounded transition-colors ${
                               u.status === "locked"
-                                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25"
-                                : "bg-slate-950/70 text-slate-400 border-slate-800 hover:text-rose-400 hover:border-rose-500/30"
+                                ? "text-[#15803D] hover:bg-[#F0FDF4]"
+                                : "text-[#64748B] hover:text-[#B91C1C] hover:bg-[#FEF2F2]"
                             }`}
                             title={u.status === "locked" ? "Mở khóa tài khoản" : "Khóa tài khoản"}
                           >
@@ -503,7 +539,7 @@ export default function UsersPage() {
                               setStaffId(u.staffId || "");
                               setEditModalOpen(true);
                             }}
-                            className="p-2 rounded-xl bg-slate-950/70 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 hover:border-slate-700 transition-all"
+                            className="p-1 rounded hover:bg-[#F8FAFC] text-[#64748B] hover:text-[#172033] transition-colors"
                             title="Sửa vai trò & liên kết nhân sự"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -511,7 +547,7 @@ export default function UsersPage() {
 
                           <button
                             onClick={() => handleDeleteUser(u)}
-                            className="p-2 rounded-xl bg-slate-950/70 hover:bg-rose-600/80 text-slate-400 hover:text-white border border-slate-800 hover:border-rose-500 transition-all"
+                            className="p-1 rounded hover:bg-[#FEF2F2] text-[#64748B] hover:text-[#B91C1C] transition-colors"
                             title="Xóa tài khoản"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -532,13 +568,13 @@ export default function UsersPage() {
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         title="Tạo Người dùng Mới"
-        subtitle="Mật khẩu sẽ được băm Argon2/Bcrypt và bắt buộc đổi pass ở lần đầu đăng nhập"
+        subtitle="Mật khẩu sẽ được băm bảo mật và bắt buộc đổi pass ở lần đầu đăng nhập"
         maxWidth="max-w-lg"
       >
         <form onSubmit={handleCreateUser} className="space-y-4 text-xs">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Tên đăng nhập <span className="text-rose-400">*</span>
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-[#172033] uppercase tracking-wider">
+              Tên đăng nhập <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -546,20 +582,20 @@ export default function UsersPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="VD: dung.nguyen, dev_ha..."
-              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
+              className="w-full px-3 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7] font-mono"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
-              <span>Mật khẩu khởi tạo <span className="text-rose-400">*</span></span>
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-[#172033] uppercase tracking-wider flex items-center justify-between">
+              <span>Mật khẩu khởi tạo <span className="text-rose-500">*</span></span>
               <button
                 type="button"
                 onClick={() => setPassword(generateRandomPassword(10))}
-                className="text-[10px] text-cyan-400 hover:underline font-bold flex items-center gap-1"
+                className="text-[11px] text-[#2457A7] hover:underline font-semibold flex items-center gap-1"
               >
                 <Sparkles className="w-3 h-3" />
-                Tạo mật khẩu ngẫu nhiên
+                Tạo ngẫu nhiên
               </button>
             </label>
             <input
@@ -568,19 +604,19 @@ export default function UsersPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Nhập mật khẩu..."
-              className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner"
+              className="w-full px-3 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                Phân quyền Vai trò (RBAC)
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-[#172033] uppercase tracking-wider">
+                Vai trò (Role)
               </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white text-xs font-semibold"
+                className="w-full px-2.5 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
               >
                 <option value="user">Standard User</option>
                 <option value="pm">Project Manager (PM)</option>
@@ -588,14 +624,14 @@ export default function UsersPage() {
               </select>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-[#172033] uppercase tracking-wider">
                 Trạng thái tài khoản
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white text-xs font-semibold"
+                className="w-full px-2.5 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
               >
                 <option value="active">Hoạt động (Active)</option>
                 <option value="locked">Khóa (Locked)</option>
@@ -604,14 +640,14 @@ export default function UsersPage() {
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-[#172033] uppercase tracking-wider">
               Liên kết Hồ sơ Nhân sự (Tùy chọn)
             </label>
             <select
               value={staffId}
               onChange={(e) => setStaffId(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white text-xs"
+              className="w-full px-2.5 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
             >
               <option value="">-- Không liên kết nhân sự --</option>
               {staffList.map((s) => (
@@ -622,18 +658,18 @@ export default function UsersPage() {
             </select>
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EDF1F5]">
             <button
               type="button"
               onClick={() => setAddModalOpen(false)}
-              className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800"
+              className="px-3.5 py-1.5 rounded-md text-xs font-medium text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFC] border border-[#DDE2E9] transition-colors"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 rounded-2xl text-xs font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white shadow-lg shadow-blue-500/25 disabled:opacity-50 transition-all"
+              className="px-4 py-1.5 rounded-md text-xs font-semibold bg-[#2457A7] hover:bg-[#1C4585] text-white shadow-xs disabled:opacity-50 transition-colors"
             >
               {saving ? "Đang tạo..." : "Xác nhận Tạo"}
             </button>
@@ -652,14 +688,14 @@ export default function UsersPage() {
         >
           <form onSubmit={handleEditUser} className="space-y-4 text-xs">
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-[#172033] uppercase tracking-wider">
                   Vai trò (Role)
                 </label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white text-xs font-semibold"
+                  className="w-full px-2.5 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
                 >
                   <option value="user">Standard User</option>
                   <option value="pm">Project Manager (PM)</option>
@@ -667,14 +703,14 @@ export default function UsersPage() {
                 </select>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-[#172033] uppercase tracking-wider">
                   Trạng thái
                 </label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white text-xs font-semibold"
+                  className="w-full px-2.5 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
                 >
                   <option value="active">Hoạt động (Active)</option>
                   <option value="locked">Khóa (Locked)</option>
@@ -683,14 +719,14 @@ export default function UsersPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-[#172033] uppercase tracking-wider">
                 Liên kết Hồ sơ Nhân sự
               </label>
               <select
                 value={staffId}
                 onChange={(e) => setStaffId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white text-xs"
+                className="w-full px-2.5 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
               >
                 <option value="">-- Không liên kết --</option>
                 {staffList.map((s) => (
@@ -701,18 +737,18 @@ export default function UsersPage() {
               </select>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EDF1F5]">
               <button
                 type="button"
                 onClick={() => setEditModalOpen(false)}
-                className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800"
+                className="px-3.5 py-1.5 rounded-md text-xs font-medium text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFC] border border-[#DDE2E9] transition-colors"
               >
                 Hủy
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2.5 rounded-2xl text-xs font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white shadow-lg shadow-blue-500/25 disabled:opacity-50 transition-all"
+                className="px-4 py-1.5 rounded-md text-xs font-semibold bg-[#2457A7] hover:bg-[#1C4585] text-white shadow-xs disabled:opacity-50 transition-colors"
               >
                 {saving ? "Đang lưu..." : "Lưu thay đổi"}
               </button>
@@ -727,17 +763,17 @@ export default function UsersPage() {
           isOpen={resetModalOpen}
           onClose={() => setResetModalOpen(false)}
           title={`Đặt lại Mật khẩu: @${resettingUser.username}`}
-          subtitle="Sinh mật khẩu mới ngẫu nhiên và gửi cho người dùng"
+          subtitle="Sinh mật khẩu mới ngẫu nhiên và cấp phát lại cho người dùng"
           maxWidth="max-w-md"
         >
           <form onSubmit={handleExecuteReset} className="space-y-4 text-xs">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-[#172033] uppercase tracking-wider flex items-center justify-between">
                 <span>Mật khẩu mới</span>
                 <button
                   type="button"
                   onClick={() => setNewPassword(generateRandomPassword(12))}
-                  className="text-[10px] text-cyan-400 hover:underline font-bold flex items-center gap-1"
+                  className="text-[11px] text-[#2457A7] hover:underline font-semibold flex items-center gap-1"
                 >
                   <Sparkles className="w-3 h-3" />
                   Tạo pass khác
@@ -748,13 +784,13 @@ export default function UsersPage() {
                 required
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-2xl bg-slate-950/80 border border-slate-700/80 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50 shadow-inner"
+                className="w-full px-3 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
               />
             </div>
 
             {newPassword && (
-              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-2">
-                <span className="text-xs text-emerald-400 font-mono font-bold">{newPassword}</span>
+              <div className="p-3 rounded-md bg-[#F8FAFC] border border-[#DDE2E9] flex items-center justify-between gap-2">
+                <span className="text-xs text-[#172033] font-mono font-bold">{newPassword}</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -763,26 +799,26 @@ export default function UsersPage() {
                     success("Đã sao chép mật khẩu mới!");
                     setTimeout(() => setCopied(false), 2000);
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-all"
+                  className="px-2.5 py-1 rounded bg-white hover:bg-[#F8FAFC] text-[#172033] border border-[#DDE2E9] text-xs font-medium flex items-center gap-1 transition-colors"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? <Check className="w-3 h-3 text-[#15803D]" /> : <Copy className="w-3 h-3" />}
                   <span>{copied ? "Đã copy" : "Copy"}</span>
                 </button>
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EDF1F5]">
               <button
                 type="button"
                 onClick={() => setResetModalOpen(false)}
-                className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800"
+                className="px-3.5 py-1.5 rounded-md text-xs font-medium text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFC] border border-[#DDE2E9] transition-colors"
               >
                 Hủy
               </button>
               <button
                 type="submit"
                 disabled={saving || !newPassword.trim()}
-                className="px-6 py-2.5 rounded-2xl text-xs font-bold bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 hover:from-amber-500 hover:to-orange-400 text-slate-950 shadow-lg shadow-amber-500/25 disabled:opacity-50 transition-all"
+                className="px-4 py-1.5 rounded-md text-xs font-semibold bg-[#2457A7] hover:bg-[#1C4585] text-white shadow-xs disabled:opacity-50 transition-colors"
               >
                 {saving ? "Đang cập nhật..." : "Xác nhận Đặt lại"}
               </button>

@@ -14,6 +14,8 @@ export async function GET(request: Request) {
     const q = searchParams.get("q")?.trim() || "";
     const status = searchParams.get("status") || "";
 
+    const regionId = searchParams.get("regionId") || "";
+
     const where: any = {
       deletedAt: null,
     };
@@ -30,9 +32,20 @@ export async function GET(request: Request) {
       where.status = status;
     }
 
+    if (regionId && regionId !== "all") {
+      where.regionId = regionId;
+    }
+
     const projects = await prisma.project.findMany({
       where,
       include: {
+        region: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
         assignments: {
           where: { unassignedAt: null },
           include: {
@@ -47,6 +60,15 @@ export async function GET(request: Request) {
             },
           },
           orderBy: { tierLevel: "asc" },
+        },
+        contactStaff: {
+          select: {
+            id: true,
+            fullName: true,
+            corporateEmail: true,
+            phoneNumber: true,
+            department: true,
+          },
         },
         _count: {
           select: {
@@ -79,6 +101,12 @@ export async function GET(request: Request) {
         defaultPassword: p.defaultPassword,
         status: p.status,
         description: p.description,
+        regionId: p.regionId,
+        region: p.region,
+        contactStaffId: p.contactStaffId,
+        contactStaffName: p.contactStaffName || p.contactStaff?.fullName || null,
+        contactStaffPosition: p.contactStaffPosition || p.contactStaff?.department || null,
+        contactStaff: p.contactStaff,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
         level1: l1,
@@ -121,9 +149,13 @@ export async function POST(request: Request) {
       systemHisUrl,
       defaultPassword,
       description,
+      regionId,
       level1StaffId,
       level2StaffId,
       level3StaffId,
+      contactStaffId,
+      contactStaffName,
+      contactStaffPosition,
     } = body;
 
     if (!projectName || !systemHisUrl) {
@@ -239,6 +271,17 @@ export async function POST(request: Request) {
       );
     }
 
+    let resolvedContactName = contactStaffName ? String(contactStaffName).trim() : null;
+    let resolvedContactPos = contactStaffPosition ? String(contactStaffPosition).trim() : null;
+
+    if (contactStaffId && (!resolvedContactName || !resolvedContactPos)) {
+      const cStaff = await prisma.staff.findUnique({ where: { id: contactStaffId } });
+      if (cStaff) {
+        if (!resolvedContactName) resolvedContactName = cStaff.fullName;
+        if (!resolvedContactPos) resolvedContactPos = cStaff.department || null;
+      }
+    }
+
     const newProject = await prisma.project.create({
       data: {
         projectName: projectName.trim(),
@@ -247,6 +290,10 @@ export async function POST(request: Request) {
         systemHisUrl: systemHisUrl.trim(),
         defaultPassword: defaultPassword ? defaultPassword.trim() : null,
         description: description ? description.trim() : null,
+        regionId: regionId ? String(regionId).trim() : null,
+        contactStaffId: contactStaffId || null,
+        contactStaffName: resolvedContactName,
+        contactStaffPosition: resolvedContactPos,
         assignments: {
           create: selectedLevels.map((l) => ({
             staffId: l.staffId,
@@ -259,6 +306,7 @@ export async function POST(request: Request) {
         assignments: {
           include: { staff: true },
         },
+        contactStaff: true,
       },
     });
 
