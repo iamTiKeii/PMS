@@ -207,8 +207,26 @@ export async function POST(request: Request) {
       );
     }
     console.error("Create doc link error:", error);
+    if (error?.code === "P2000") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "MSG-400",
+            message: "Độ dài dữ liệu (đường dẫn, mô tả hoặc tiêu đề) vượt quá giới hạn lưu trữ cho phép.",
+          },
+        },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
-      { success: false, error: { code: "MSG-500", message: "Lỗi tạo link tài liệu mới." } },
+      {
+        success: false,
+        error: {
+          code: "MSG-500",
+          message: error?.message ? `Lỗi tạo link tài liệu mới: ${error.message}` : "Lỗi tạo link tài liệu mới.",
+        },
+      },
       { status: 500 }
     );
   }

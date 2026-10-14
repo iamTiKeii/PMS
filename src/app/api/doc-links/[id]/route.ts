@@ -85,8 +85,26 @@ export async function PUT(
       );
     }
     console.error("Update doc link error:", error);
+    if (error?.code === "P2000") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "MSG-400",
+            message: "Độ dài dữ liệu (đường dẫn, mô tả hoặc tiêu đề) vượt quá giới hạn lưu trữ cho phép.",
+          },
+        },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
-      { success: false, error: { code: "MSG-500", message: "Lỗi cập nhật link tài liệu." } },
+      {
+        success: false,
+        error: {
+          code: "MSG-500",
+          message: error?.message ? `Lỗi cập nhật link tài liệu: ${error.message}` : "Lỗi cập nhật link tài liệu.",
+        },
+      },
       { status: 500 }
     );
   }

@@ -68,11 +68,11 @@ model Staff {
 
 model DocLink {
   id              String    @id @default(cuid())
-  title           String
-  targetUrl       String
+  title           String    @db.VarChar(500)
+  targetUrl       String    @db.Text
   linkCategory    String    @default("other") // docs, sheets, drive, other
-  tags            String    @default("[]") // JSON string of tags
-  description     String?
+  tags            String?   @db.Text // JSON string of tags
+  description     String?   @db.Text
   createdByUserId String
   createdByUser   User      @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
   createdAt       DateTime  @default(now())
