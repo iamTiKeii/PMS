@@ -6,57 +6,91 @@ export interface ParsedUrlInfo {
 }
 
 /**
+ * Normalize and auto-prefix protocol if missing
+ */
+export function normalizeUrl(url: string): string {
+  let trimmed = (url || "").trim();
+  if (!trimmed) return "";
+  if (!/^https?:\/\//i.test(trimmed)) {
+    trimmed = `https://${trimmed}`;
+  }
+  return trimmed;
+}
+
+/**
  * Parse and categorize URL
  */
 export function parseUrlInfo(url: string): ParsedUrlInfo {
-  const trimmed = url.trim();
+  const clean = normalizeUrl(url);
 
   // Google Docs regex: docs.google.com/document/d/{id}
-  const docsMatch = trimmed.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/);
+  const docsMatch = clean.match(/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/i);
   if (docsMatch) {
     return {
       category: "docs",
       googleFileId: docsMatch[1],
       isGoogle: true,
-      cleanUrl: trimmed,
+      cleanUrl: clean,
     };
   }
 
   // Google Sheets regex: docs.google.com/spreadsheets/d/{id}
-  const sheetsMatch = trimmed.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  const sheetsMatch = clean.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/i);
   if (sheetsMatch) {
     return {
       category: "sheets",
       googleFileId: sheetsMatch[1],
       isGoogle: true,
-      cleanUrl: trimmed,
+      cleanUrl: clean,
     };
   }
 
-  // Google Drive Folder: drive.google.com/drive/folders/{id}
-  const driveMatch = trimmed.match(/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/);
-  if (driveMatch) {
+  // Google Drive Folder: drive.google.com/drive/(u/\d+/)?folders/{id}
+  const driveFolderMatch = clean.match(/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/i);
+  if (driveFolderMatch) {
     return {
       category: "drive",
-      googleFileId: driveMatch[1],
+      googleFileId: driveFolderMatch[1],
       isGoogle: true,
-      cleanUrl: trimmed,
+      cleanUrl: clean,
+    };
+  }
+
+  // Google Drive File: drive.google.com/file/d/{id}
+  const driveFileMatch = clean.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i);
+  if (driveFileMatch) {
+    return {
+      category: "drive",
+      googleFileId: driveFileMatch[1],
+      isGoogle: true,
+      cleanUrl: clean,
+    };
+  }
+
+  // Google Drive open / uc links: drive.google.com/(open|uc)?id={id}
+  const driveOpenMatch = clean.match(/drive\.google\.com\/(?:open|uc)\?(?:[^&]+&)*id=([a-zA-Z0-9_-]+)/i);
+  if (driveOpenMatch) {
+    return {
+      category: "drive",
+      googleFileId: driveOpenMatch[1],
+      isGoogle: true,
+      cleanUrl: clean,
     };
   }
 
   // General Google link
-  if (trimmed.includes("google.com") || trimmed.includes("goo.gl")) {
+  if (clean.includes("google.com") || clean.includes("goo.gl")) {
     return {
       category: "other",
       isGoogle: true,
-      cleanUrl: trimmed,
+      cleanUrl: clean,
     };
   }
 
   return {
     category: "other",
     isGoogle: false,
-    cleanUrl: trimmed,
+    cleanUrl: clean,
   };
 }
 
@@ -65,9 +99,10 @@ export function parseUrlInfo(url: string): ParsedUrlInfo {
  */
 export function isValidUrl(url: string): boolean {
   try {
-    const parsed = new URL(url);
+    const parsed = new URL(normalizeUrl(url));
     return parsed.protocol === "http:" || parsed.protocol === "https:";
   } catch {
     return false;
   }
 }
+

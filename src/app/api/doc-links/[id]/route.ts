@@ -12,7 +12,7 @@ export async function PUT(
     const session = await requireAuth();
     const { id } = await props.params;
     const body = await request.json();
-    const { title, targetUrl, description, tags } = body;
+    const { title, targetUrl, description, tags, category: customCategory } = body;
 
     const existingLink = await prisma.docLink.findUnique({
       where: { id },
@@ -43,12 +43,21 @@ export async function PUT(
     const updateData: any = {};
     if (title) updateData.title = title.trim();
     if (targetUrl) {
-      updateData.targetUrl = targetUrl.trim();
       const parsed = parseUrlInfo(targetUrl);
-      updateData.linkCategory = parsed.category;
+      updateData.targetUrl = parsed.cleanUrl;
+      const validCategories = ["docs", "sheets", "drive", "other"];
+      updateData.linkCategory =
+        customCategory && validCategories.includes(customCategory)
+          ? customCategory
+          : parsed.category;
+    } else if (customCategory) {
+      const validCategories = ["docs", "sheets", "drive", "other"];
+      if (validCategories.includes(customCategory)) {
+        updateData.linkCategory = customCategory;
+      }
     }
     if (description !== undefined) updateData.description = description ? description.trim() : null;
-    if (tags !== undefined) updateData.tags = JSON.stringify(tags);
+    if (tags !== undefined) updateData.tags = JSON.stringify(Array.isArray(tags) ? tags : []);
 
     const updated = await prisma.docLink.update({
       where: { id },

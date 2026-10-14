@@ -23,12 +23,36 @@ import {
   Sparkles,
   Layers,
   ArrowUpRight,
+  Loader2,
+  Tag,
+  X,
+  Link2,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { parseUrlInfo } from "@/lib/url-parser";
+import { parseUrlInfo, normalizeUrl, isValidUrl } from "@/lib/url-parser";
 import { ExcelImportModal, ColumnDefinition } from "@/components/ExcelImportModal";
 import { Pagination, usePagination } from "@/components/Pagination";
 import { TableRowSkeleton } from "@/components/Skeleton";
+
+const SUGGESTED_TAGS = [
+  "Quy trình",
+  "Kế hoạch",
+  "Báo cáo",
+  "HIS",
+  "Kỹ thuật",
+  "BHYT",
+  "Triển khai",
+  "Vận hành",
+  "Biểu mẫu",
+  "Đào tạo",
+];
+
+const CATEGORY_OPTIONS = [
+  { id: "docs", label: "Google Docs", icon: FileText, color: "text-blue-600 bg-blue-50 border-blue-200" },
+  { id: "sheets", label: "Google Sheets", icon: FileSpreadsheet, color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
+  { id: "drive", label: "Google Drive", icon: HardDrive, color: "text-amber-600 bg-amber-50 border-amber-200" },
+  { id: "other", label: "Khác / Web", icon: Globe, color: "text-slate-600 bg-slate-50 border-slate-200" },
+];
 
 export default function DocLinksPage() {
   const { success, error, info } = useToast();
@@ -57,13 +81,17 @@ export default function DocLinksPage() {
   const [editingLink, setEditingLink] = useState<any>(null);
   const [title, setTitle] = useState("");
   const [targetUrl, setTargetUrl] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("docs");
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [detectedCategory, setDetectedCategory] = useState<string>("other");
   const [description, setDescription] = useState("");
-  const [tagsInput, setTagsInput] = useState("");
-  const [detectedCategory, setDetectedCategory] = useState("other");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [isFetchingTitle, setIsFetchingTitle] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Duplicate Warning Modal state
-  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  // Duplicate Warning state (BR-04, BR-09)
+  const [duplicateWarning, setDuplicateWarning] = useState<any | null>(null);
 
   // Excel Import Modal state
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -136,17 +164,27 @@ export default function DocLinksPage() {
     if (targetUrl) {
       const parsed = parseUrlInfo(targetUrl);
       setDetectedCategory(parsed.category);
+      if (!isCustomCategory) {
+        setSelectedCategory(parsed.category);
+      }
     } else {
       setDetectedCategory("other");
+      if (!isCustomCategory) {
+        setSelectedCategory("docs");
+      }
     }
-  }, [targetUrl]);
+  }, [targetUrl, isCustomCategory]);
 
   const openAddModal = () => {
     setEditingLink(null);
     setTitle("");
     setTargetUrl("");
+    setSelectedCategory("docs");
+    setIsCustomCategory(false);
+    setDetectedCategory("other");
     setDescription("");
-    setTagsInput("");
+    setTags([]);
+    setTagInput("");
     setDuplicateWarning(null);
     setModalOpen(true);
   };
@@ -155,28 +193,110 @@ export default function DocLinksPage() {
     setEditingLink(link);
     setTitle(link.title);
     setTargetUrl(link.targetUrl);
+    setSelectedCategory(link.linkCategory || "other");
+    setIsCustomCategory(true);
+    setDetectedCategory(link.linkCategory || "other");
     setDescription(link.description || "");
     try {
       const tagsArr = JSON.parse(link.tags || "[]");
-      setTagsInput(tagsArr.join(", "));
+      setTags(Array.isArray(tagsArr) ? tagsArr : []);
     } catch {
-      setTagsInput("");
+      setTags([]);
     }
+    setTagInput("");
     setDuplicateWarning(null);
     setModalOpen(true);
   };
 
-  const handleSave = async (e: React.FormEvent, forceDuplicate = false) => {
+  // Tự động quét & lấy tiêu đề tài liệu từ URL
+  const handleFetchTitle = async (urlToFetch?: string) => {
+    const raw = (urlToFetch || targetUrl).trim();
+    if (!raw) {
+      error("Vui lòng nhập đường dẫn URL trước khi lấy tiêu đề.");
+      return;
+    }
+    const normalized = normalizeUrl(raw);
+    setTargetUrl(normalized);
+
+    setIsFetchingTitle(true);
+    try {
+      const res = await fetch("/api/doc-links/fetch-title", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: normalized }),
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        if (json.data.cleanUrl) {
+          setTargetUrl(json.data.cleanUrl);
+        }
+        if (json.data.category && !isCustomCategory) {
+          setSelectedCategory(json.data.category);
+        }
+        if (json.data.title) {
+          setTitle(json.data.title);
+          success(`Đã tự động nhận diện tiêu đề: "${json.data.title}"`);
+        } else {
+          info("Không trích xuất được tiêu đề tự động. Vui lòng tự nhập tên gợi nhớ.");
+        }
+      } else {
+        info("Không lấy được tiêu đề tự động từ link này.");
+      }
+    } catch (err) {
+      console.warn("Lỗi fetch title:", err);
+      info("Không thể kết nối lấy tiêu đề tự động.");
+    } finally {
+      setIsFetchingTitle(false);
+    }
+  };
+
+  // Quản lý Tags dạng Chips
+  const handleAddTag = (tagToAdd: string) => {
+    const cleanTag = tagToAdd.trim().replace(/^,+|,+$/g, "");
+    if (!cleanTag) return;
+    if (!tags.includes(cleanTag)) {
+      setTags([...tags, cleanTag]);
+    }
+    setTagInput("");
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter((t) => t !== tagToRemove));
+  };
+
+  const handleToggleSuggestedTag = (suggested: string) => {
+    if (tags.includes(suggested)) {
+      handleRemoveTag(suggested);
+    } else {
+      setTags([...tags, suggested]);
+    }
+  };
+
+  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      handleAddTag(tagInput);
+    } else if (e.key === "Backspace" && !tagInput && tags.length > 0) {
+      handleRemoveTag(tags[tags.length - 1]);
+    }
+  };
+
+  // Lưu link vào kho (Hỗ trợ Force Save khi có cảnh báo trùng lặp BR-04, MSG-31)
+  const handleSave = async (e?: React.FormEvent, forceSave = false) => {
     if (e) e.preventDefault();
     if (!title.trim() || !targetUrl.trim()) {
       error("Vui lòng nhập tên tài liệu và đường dẫn URL.");
       return;
     }
 
-    const tags = tagsInput
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
+    // Tự động gom tag đang gõ dở nếu user bấm submit trực tiếp
+    const finalTags = [...tags];
+    if (tagInput.trim()) {
+      const pending = tagInput.trim().replace(/^,+|,+$/g, "");
+      if (pending && !finalTags.includes(pending)) {
+        finalTags.push(pending);
+      }
+    }
 
     setSaving(true);
     try {
@@ -187,19 +307,24 @@ export default function DocLinksPage() {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title,
-          targetUrl,
-          description,
-          tags,
-          forceDuplicate,
+          title: title.trim(),
+          targetUrl: normalizeUrl(targetUrl.trim()),
+          category: selectedCategory,
+          description: description.trim(),
+          tags: finalTags,
+          forceSave,
+          forceDuplicate: forceSave,
         }),
       });
 
       const json = await res.json();
 
-      // Check if duplicate warning (MSG-31)
-      if (res.status === 409 && json.warning) {
-        setDuplicateWarning(json.warning.message);
+      // Xử lý Cảnh báo Trùng lặp (BR-04, MSG-31)
+      if (res.status === 409 && (json.isDuplicateWarning || json.code === "MSG-31")) {
+        setDuplicateWarning({
+          message: json.message || "Tài liệu này đã tồn tại trong kho link.",
+          existingLink: json.existingLink,
+        });
         setSaving(false);
         return;
       }
@@ -210,7 +335,7 @@ export default function DocLinksPage() {
         return;
       }
 
-      success(editingLink ? "Cập nhật link tài liệu thành công!" : "Thêm mới link tài liệu thành công!");
+      success(editingLink ? "Cập nhật link tài liệu thành công!" : "Lưu vào Kho Link thành công!");
       setModalOpen(false);
       setDuplicateWarning(null);
       fetchLinks();
@@ -504,19 +629,96 @@ export default function DocLinksPage() {
       {/* Add / Edit Link Modal */}
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editingLink ? "Chỉnh sửa Link Tài liệu" : "Thêm mới Link Tài liệu"}
-        subtitle="Hệ thống tự động phát hiện Google Docs, Sheets, Drive và trích xuất File ID"
+        onClose={() => !saving && setModalOpen(false)}
+        title={editingLink ? "Chỉnh sửa Link Tài liệu" : "Thêm mới Link Tài liệu vào Kho"}
+        subtitle={
+          editingLink
+            ? "Cập nhật thông tin tiêu đề, định dạng phân loại và nhãn tags"
+            : "Hệ thống tự động phát hiện Google Docs, Sheets, Drive, trích xuất tiêu đề và kiểm tra trùng lặp"
+        }
         maxWidth="max-w-xl"
       >
-        <form onSubmit={(e) => handleSave(e, false)} className="space-y-3.5 text-xs">
+        <form onSubmit={(e) => handleSave(e, false)} className="space-y-4 text-xs">
+          {/* 1. Đường dẫn URL (Ưu tiên nhập trước) */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-[#64748B]">
-              Tên Tài liệu <span className="text-[#B91C1C]">*</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-[#172033] flex items-center gap-1">
+                <span>Đường dẫn URL</span>
+                <span className="text-rose-500">*</span>
+              </label>
+
+              <div className="flex items-center gap-2">
+                {targetUrl.trim() && (
+                  <a
+                    href={normalizeUrl(targetUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-[#2457A7] hover:underline flex items-center gap-1 font-medium transition-colors"
+                    title="Mở tab mới kiểm tra thử đường link"
+                  >
+                    <span>Mở thử link</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleFetchTitle()}
+                  disabled={isFetchingTitle || !targetUrl.trim()}
+                  className="text-[11px] font-semibold text-[#2457A7] hover:text-[#1C4585] flex items-center gap-1 disabled:opacity-40 transition-colors bg-[#E5EDFA] px-2 py-0.5 rounded border border-[#CBD5E1]"
+                  title="Tự động đọc tiêu đề tài liệu từ link web hoặc Google Docs/Sheets"
+                >
+                  {isFetchingTitle ? (
+                    <Loader2 className="w-3 h-3 animate-spin text-[#2457A7]" />
+                  ) : (
+                    <Sparkles className="w-3 h-3 text-amber-600" />
+                  )}
+                  <span>{isFetchingTitle ? "Đang quét..." : "Lấy tiêu đề tự động"}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="relative">
+              <input
+                type="text"
+                required
+                value={targetUrl}
+                onChange={(e) => setTargetUrl(e.target.value)}
+                onBlur={() => {
+                  if (targetUrl.trim() && !title.trim()) {
+                    handleFetchTitle();
+                  }
+                }}
+                placeholder="https://docs.google.com/document/d/... hoặc dán link Google Sheets/Drive"
+                className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7]"
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-[#64748B] pt-0.5">
+              <span>Hỗ trợ Google Docs, Sheets, Drive Folder & File, hoặc các trang web tài liệu.</span>
+              {detectedCategory !== "other" && (
+                <span className="font-semibold text-[#15803D] flex items-center gap-1">
+                  <Check className="w-3 h-3" />
+                  Nhận diện: {detectedCategory.toUpperCase()}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* 2. Tên gợi nhớ của Tài liệu */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-[#172033] flex items-center gap-1">
+                <span>Tên gợi nhớ của tài liệu</span>
+                <span className="text-rose-500">*</span>
+              </label>
+              {title.length > 0 && (
+                <span className="text-[10px] text-[#94A3B8] font-mono">{title.length}/200 ký tự</span>
+              )}
+            </div>
             <input
               type="text"
               required
+              maxLength={200}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="VD: Kế hoạch Triển khai Bệnh viện Quốc tế Q4..."
@@ -524,96 +726,192 @@ export default function DocLinksPage() {
             />
           </div>
 
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-[#64748B]">
-                Đường dẫn URL <span className="text-[#B91C1C]">*</span>
-              </label>
-              {detectedCategory !== "other" && (
-                <span className="text-[11px] font-semibold text-[#15803D] flex items-center gap-1">
-                  <Check className="w-3 h-3" />
-                  Đã nhận diện: {detectedCategory}
-                </span>
-              )}
-            </div>
-            <input
-              type="url"
-              required
-              value={targetUrl}
-              onChange={(e) => setTargetUrl(e.target.value)}
-              placeholder="https://docs.google.com/document/d/... hoặc https://docs.google.com/spreadsheets/d/..."
-              className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7]"
-            />
-          </div>
-
-          {/* Duplicate Warning Prompt */}
-          {duplicateWarning && (
-            <div className="p-3 rounded-md bg-[#FFFBEB] border border-[#FDE68A] text-xs text-[#78350F] space-y-2">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-[#B45309] shrink-0 mt-0.5" />
-                <div className="leading-relaxed">
-                  <strong className="font-semibold">Cảnh báo Trùng lặp (BR-04):</strong> {duplicateWarning}
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setDuplicateWarning(null)}
-                  className="px-3 py-1 rounded bg-white hover:bg-[#F8FAFC] text-[#172033] border border-[#DDE2E9] font-medium text-xs transition-colors"
-                >
-                  Kiểm tra lại link
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleSave(e, true)}
-                  className="px-3 py-1 rounded bg-[#B45309] hover:bg-[#92400E] text-white font-medium text-xs transition-colors"
-                >
-                  Vẫn tiếp tục lưu link
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-[#64748B]">
-              Tags phân loại (Phân cách bởi dấu phẩy)
+          {/* 3. Phân loại Định dạng (Category) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[#172033]">
+              Định dạng / Danh mục
             </label>
-            <input
-              type="text"
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-              placeholder="HIS, Kỹ thuật, BHYT, Sprint 4..."
-              className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7]"
-            />
+            <div className="grid grid-cols-4 gap-2">
+              {CATEGORY_OPTIONS.map((cat) => {
+                const isSelected = selectedCategory === cat.id;
+                const Icon = cat.icon;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory(cat.id);
+                      setIsCustomCategory(true);
+                    }}
+                    className={`py-2 px-2.5 rounded-lg border text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
+                      isSelected
+                        ? "bg-white border-[#2457A7] text-[#2457A7] ring-1 ring-[#2457A7] shadow-xs font-semibold"
+                        : "bg-[#F8FAFC] border-[#DDE2E9] text-[#64748B] hover:bg-white hover:text-[#172033]"
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${isSelected ? "text-[#2457A7]" : "text-[#94A3B8]"}`} />
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
+          {/* 4. Nhãn phân loại (Tags) dạng Chips & Gợi ý nhanh */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[#172033] flex items-center justify-between">
+              <span>Tags nhãn phân loại</span>
+              <span className="text-[10px] text-[#64748B] font-normal">
+                Ấn Enter hoặc dấu phẩy để tạo tag
+              </span>
+            </label>
+
+            <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-md bg-white border border-[#DDE2E9] focus-within:ring-1 focus-within:ring-[#2457A7] focus-within:border-[#2457A7] min-h-[38px]">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E5EDFA] text-[#1E429F] border border-[#BFDBFE] text-xs font-medium"
+                >
+                  <Tag className="w-2.5 h-2.5" />
+                  <span>{tag}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    className="hover:text-rose-600 transition-colors ml-0.5"
+                    title="Xóa tag này"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagInputKeyDown}
+                onBlur={() => handleAddTag(tagInput)}
+                placeholder={tags.length === 0 ? "Nhập tag rồi ấn Enter (VD: Quy trình, HIS...)" : "Thêm tag..."}
+                className="flex-1 min-w-[130px] outline-none text-xs bg-transparent text-[#172033] placeholder-[#94A3B8]"
+              />
+            </div>
+
+            {/* Gợi ý tags phổ biến */}
+            <div className="flex flex-wrap items-center gap-1 pt-1">
+              <span className="text-[10px] text-[#94A3B8] font-medium mr-1">Gợi ý nhanh:</span>
+              {SUGGESTED_TAGS.map((stag) => {
+                const isAdded = tags.includes(stag);
+                return (
+                  <button
+                    key={stag}
+                    type="button"
+                    onClick={() => handleToggleSuggestedTag(stag)}
+                    className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
+                      isAdded
+                        ? "bg-[#2457A7] text-white font-semibold shadow-xs"
+                        : "bg-[#F1F3F6] hover:bg-[#E2E8F0] text-[#64748B] hover:text-[#172033]"
+                    }`}
+                  >
+                    {isAdded ? `✓ ${stag}` : `+ ${stag}`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 5. Mô tả chi tiết / Ghi chú */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-[#64748B]">
-              Mô tả chi tiết / Ghi chú
+            <label className="text-xs font-semibold text-[#172033]">
+              Mô tả chi tiết / Ghi chú truy cập
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ghi chú nội dung tài liệu, phân quyền truy cập Google..."
+              placeholder="Ghi chú nội dung tài liệu, phân quyền truy cập Google, người liên hệ phụ trách..."
               className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7] focus:border-[#2457A7] resize-none"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#DDE2E9]">
+          {/* 6. Cảnh báo Trùng lặp (Duplicate Warning Banner - BR-04, MSG-31) */}
+          {duplicateWarning && (
+            <div className="p-3.5 rounded-lg bg-[#FFFBEB] border border-[#FDE68A] text-xs text-[#78350F] space-y-2.5">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-[#B45309] shrink-0 mt-0.5" />
+                <div className="space-y-1 flex-1">
+                  <div className="font-semibold text-xs text-[#92400E]">
+                    Cảnh báo Trùng lặp Tài liệu (BR-04, MSG-31)
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-[#78350F]">
+                    {duplicateWarning.message}
+                  </p>
+                </div>
+              </div>
+
+              {duplicateWarning.existingLink && (
+                <div className="p-2.5 rounded-md bg-white border border-[#FDE68A] text-[11px] space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-[#172033] line-clamp-1">
+                      {duplicateWarning.existingLink.title}
+                    </span>
+                    <a
+                      href={duplicateWarning.existingLink.targetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#2457A7] hover:underline flex items-center gap-0.5 font-medium shrink-0 ml-2"
+                    >
+                      <span>Xem tài liệu đã có</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <div className="text-[10px] text-[#64748B] flex items-center gap-3">
+                    <span>
+                      Người tạo: <strong>{duplicateWarning.existingLink.creator}</strong>
+                    </span>
+                    {duplicateWarning.existingLink.createdAt && (
+                      <span>Ngày tạo: {formatDate(duplicateWarning.existingLink.createdAt)}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-1 border-t border-[#FDE68A]/60">
+                <button
+                  type="button"
+                  onClick={() => setDuplicateWarning(null)}
+                  className="px-3 py-1 rounded-md bg-white hover:bg-[#F8FAFC] text-[#64748B] hover:text-[#172033] border border-[#DDE2E9] font-medium text-xs transition-colors"
+                >
+                  Kiểm tra lại link
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => handleSave(undefined, true)}
+                  className="px-3.5 py-1 rounded-md bg-[#B45309] hover:bg-[#92400E] text-white font-semibold text-xs transition-colors flex items-center gap-1 shadow-xs"
+                >
+                  <span>{saving ? "Đang lưu..." : "Vẫn tiếp tục lưu link này"}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Footer Buttons */}
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EDF1F5]">
             <button
               type="button"
+              disabled={saving}
               onClick={() => setModalOpen(false)}
-              className="px-3.5 py-1.5 rounded-md text-xs font-medium text-[#64748B] hover:text-[#172033] hover:bg-[#F1F3F6] transition-colors"
+              className="px-3.5 py-1.5 rounded-md text-xs font-medium text-[#64748B] hover:text-[#172033] hover:bg-[#F1F3F6] border border-[#DDE2E9] transition-colors"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-1.5 rounded-md text-xs font-semibold bg-[#2457A7] hover:bg-[#1C4585] text-white disabled:opacity-50 transition-colors shadow-xs"
+              className="px-4 py-1.5 rounded-md text-xs font-semibold bg-[#2457A7] hover:bg-[#1C4585] text-white disabled:opacity-50 transition-colors shadow-xs flex items-center gap-1.5"
             >
-              {saving ? "Đang lưu..." : editingLink ? "Lưu thay đổi" : "Lưu vào Kho Link"}
+              {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              <span>{saving ? "Đang lưu..." : editingLink ? "Lưu thay đổi" : "Lưu vào Kho Link"}</span>
             </button>
           </div>
         </form>

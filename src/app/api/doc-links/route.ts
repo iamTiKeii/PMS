@@ -69,7 +69,8 @@ export async function POST(request: Request) {
   try {
     const session = await requireAuth();
     const body = await request.json();
-    const { title, targetUrl, description, tags = [], forceSave = false } = body;
+    const { title, targetUrl, description, tags = [], category: customCategory } = body;
+    const shouldForce = Boolean(body.forceSave || body.forceDuplicate);
 
     if (!title || !targetUrl) {
       return NextResponse.json(
@@ -80,30 +81,82 @@ export async function POST(request: Request) {
 
     if (!isValidUrl(targetUrl)) {
       return NextResponse.json(
-        { success: false, error: { code: "MSG-32", message: "Đường dẫn không hợp lệ. Vui lòng nhập URL bắt đầu bằng http:// hoặc https://." } },
+        {
+          success: false,
+          error: {
+            code: "MSG-32",
+            message: "Đường dẫn không hợp lệ. Vui lòng nhập URL bắt đầu bằng http:// hoặc https://.",
+          },
+        },
         { status: 400 }
       );
     }
 
     const parsed = parseUrlInfo(targetUrl);
+    const cleanUrl = parsed.cleanUrl;
 
-    // Smart duplicate check (BR-09)
-    if (!forceSave) {
-      const existing = await prisma.docLink.findFirst({
+    // Smart duplicate check (BR-04, BR-09, SRS 2.2)
+    if (!shouldForce) {
+      // 1. Check exact URL match
+      let existing = await prisma.docLink.findFirst({
         where: {
-          targetUrl: targetUrl.trim(),
+          targetUrl: cleanUrl,
           deletedAt: null,
+        },
+        include: {
+          createdByUser: {
+            select: {
+              username: true,
+              staff: { select: { fullName: true } },
+            },
+          },
         },
       });
 
+      let isSameFileId = false;
+
+      // 2. If no exact match and it is a Google document with a File ID, check by Google File ID
+      if (!existing && parsed.googleFileId) {
+        existing = await prisma.docLink.findFirst({
+          where: {
+            targetUrl: { contains: parsed.googleFileId },
+            deletedAt: null,
+          },
+          include: {
+            createdByUser: {
+              select: {
+                username: true,
+                staff: { select: { fullName: true } },
+              },
+            },
+          },
+        });
+        if (existing) {
+          isSameFileId = true;
+        }
+      }
+
       if (existing) {
+        const creatorName =
+          existing.createdByUser?.staff?.fullName || existing.createdByUser?.username || "Người dùng";
+        const duplicateReason = isSameFileId
+          ? `Đường dẫn này cùng File ID (${parsed.googleFileId}) với tài liệu "${existing.title}" (tạo bởi ${creatorName}) đã có trong hệ thống.`
+          : `Đường dẫn này đã được lưu trong hệ thống với tên "${existing.title}" (tạo bởi ${creatorName}).`;
+
         return NextResponse.json(
           {
             success: false,
             isDuplicateWarning: true,
             code: "MSG-31",
-            message: `Đường dẫn này đã được lưu trong hệ thống với tên "${existing.title}". Bạn có muốn tiếp tục lưu thêm bản ghi này không?`,
-            existingId: existing.id,
+            message: `${duplicateReason} Bạn có muốn tiếp tục lưu thêm bản ghi này không?`,
+            existingLink: {
+              id: existing.id,
+              title: existing.title,
+              targetUrl: existing.targetUrl,
+              creator: creatorName,
+              createdAt: existing.createdAt,
+              isSameFileId,
+            },
           },
           { status: 409 }
         );
@@ -111,12 +164,17 @@ export async function POST(request: Request) {
     }
 
     const tagsArray = Array.isArray(tags) ? tags : [];
+    const validCategories = ["docs", "sheets", "drive", "other"];
+    const finalCategory =
+      customCategory && validCategories.includes(customCategory)
+        ? customCategory
+        : parsed.category;
 
     const newLink = await prisma.docLink.create({
       data: {
         title: title.trim(),
-        targetUrl: targetUrl.trim(),
-        linkCategory: parsed.category,
+        targetUrl: cleanUrl,
+        linkCategory: finalCategory,
         tags: JSON.stringify(tagsArray),
         description: description ? description.trim() : null,
         createdByUserId: session.userId,
@@ -128,7 +186,12 @@ export async function POST(request: Request) {
       actionCode: "DOC_LINK_CREATED",
       targetEntity: "doc_link",
       targetEntityId: newLink.id,
-      contextJson: { title: newLink.title, category: newLink.linkCategory },
+      contextJson: {
+        title: newLink.title,
+        category: newLink.linkCategory,
+        tags: tagsArray,
+        forceDuplicate: shouldForce,
+      },
     });
 
     return NextResponse.json({
