@@ -12,6 +12,7 @@ import {
   Search,
   Plus,
   Key,
+  RotateCcw,
   Edit2,
   Trash2,
   Lock,
@@ -50,11 +51,14 @@ export default function UsersPage() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
 
-  // Reset Password Modal state
-  const [resetModalOpen, setResetModalOpen] = useState(false);
+  // 1. Reset Default Password Modal state (SRS 1.3)
+  const [resetDefaultModalOpen, setResetDefaultModalOpen] = useState(false);
   const [resettingUser, setResettingUser] = useState<any>(null);
-  const [newPassword, setNewPassword] = useState("");
-  const [copied, setCopied] = useState(false);
+
+  // 2. Unlock User Modal state (SRS 2.3)
+  const [unlockModalOpen, setUnlockModalOpen] = useState(false);
+  const [unlockingUser, setUnlockingUser] = useState<any>(null);
+  const [unlockReason, setUnlockReason] = useState("");
 
   const [saving, setSaving] = useState(false);
 
@@ -215,26 +219,103 @@ export default function UsersPage() {
     }
   };
 
-  const handleToggleLock = async (u: any) => {
-    const newStatus = u.status === "locked" ? "active" : "locked";
-    const actionText = newStatus === "locked" ? "khóa" : "mở khóa";
+  // Khóa tài khoản chủ động (Quản trị viên khóa thủ công)
+  const handleLockUser = async (u: any) => {
+    const ok = await confirm({
+      title: `Khóa tài khoản @${u.username}?`,
+      message: `Tài khoản sẽ bị tạm ngừng quyền truy cập hệ thống PMS và Extension. Bạn có chắc chắn muốn khóa tài khoản này?`,
+      confirmText: "Khóa tài khoản",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/users/${u.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: "locked" }),
       });
 
       const json = await res.json();
       if (res.ok && json.success) {
-        success(`Đã ${actionText} tài khoản @${u.username} thành công.`);
+        success(`Đã khóa tài khoản @${u.username} thành công.`);
         fetchUsers();
       } else {
-        error(json.error?.message || `Lỗi khi ${actionText} tài khoản.`);
+        error(json.error?.message || "Lỗi khi khóa tài khoản.");
       }
     } catch {
-      error("Lỗi gửi yêu cầu.");
+      error("Lỗi gửi yêu cầu khóa tài khoản.");
+    }
+  };
+
+  // Mở modal Mở khóa tài khoản (SRS mục 2.3)
+  const openUnlockModal = (u: any) => {
+    setUnlockingUser(u);
+    setUnlockReason("");
+    setUnlockModalOpen(true);
+  };
+
+  // Thực thi Mở khóa tài khoản (SRS mục 2.2, 2.4)
+  const handleExecuteUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unlockingUser) return;
+    if (!unlockReason.trim()) {
+      error("Vui lòng nhập lý do mở khóa tài khoản.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/users/${unlockingUser.id}/unlock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: unlockReason.trim() }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        success(`Đã mở khóa tài khoản @${unlockingUser.username} thành công!`);
+        setUnlockModalOpen(false);
+        fetchUsers();
+      } else {
+        error(json.error?.message || "Lỗi khi mở khóa tài khoản.");
+      }
+    } catch {
+      error("Lỗi kết nối máy chủ khi mở khóa.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Mở modal Reset mật khẩu mặc định (SRS mục 1.3)
+  const openResetDefaultModal = (u: any) => {
+    setResettingUser(u);
+    setResetDefaultModalOpen(true);
+  };
+
+  // Thực thi Reset mật khẩu mặc định bằng Username (SRS mục 1.2, 1.4)
+  const handleExecuteResetDefault = async () => {
+    if (!resettingUser) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/users/${resettingUser.id}/reset-password-default`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        success(`Đã reset mật khẩu tài khoản @${resettingUser.username} về mặc định theo username!`);
+        setResetDefaultModalOpen(false);
+        fetchUsers();
+      } else {
+        error(json.error?.message || "Lỗi khi reset mật khẩu mặc định.");
+      }
+    } catch {
+      error("Lỗi kết nối máy chủ khi reset mật khẩu.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -258,41 +339,6 @@ export default function UsersPage() {
       }
     } catch {
       error("Lỗi gửi yêu cầu xóa.");
-    }
-  };
-
-  const openResetModal = (u: any) => {
-    setResettingUser(u);
-    const pwd = generateRandomPassword(12);
-    setNewPassword(pwd);
-    setCopied(false);
-    setResetModalOpen(true);
-  };
-
-  const handleExecuteReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resettingUser || !newPassword.trim()) return;
-
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/users/${resettingUser.id}/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPassword }),
-      });
-
-      const json = await res.json();
-      if (res.ok && json.success) {
-        success(`Đã đặt lại mật khẩu cho @${resettingUser.username}!`);
-        setResetModalOpen(false);
-        fetchUsers();
-      } else {
-        error(json.error?.message || "Lỗi đặt lại mật khẩu.");
-      }
-    } catch {
-      error("Lỗi máy chủ.");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -444,118 +490,146 @@ export default function UsersPage() {
                     </td>
                   </tr>
                 ) : (
-                  users.map((u) => (
-                    <tr key={u.id} className="hover:bg-[#F8FAFC] transition-colors">
-                      <td className="py-2.5 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-md bg-[#E5EDFA] border border-[#CBD5E1] text-[#2457A7] flex items-center justify-center font-bold text-xs uppercase shrink-0">
-                            {u.staff?.fullName ? u.staff.fullName.charAt(0) : u.username.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-[#172033] text-xs font-mono">
-                              @{u.username}
+                  users.map((u) => {
+                    const isTemporarilyLocked =
+                      u.lockedUntil && new Date(u.lockedUntil).getTime() > Date.now();
+                    const isLockedByAttempts = u.failedAttempts >= 5;
+                    const isLocked = u.status === "locked" || isTemporarilyLocked || isLockedByAttempts;
+
+                    return (
+                      <tr key={u.id} className="hover:bg-[#F8FAFC] transition-colors">
+                        <td className="py-2.5 px-4">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-md bg-[#E5EDFA] border border-[#CBD5E1] text-[#2457A7] flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                              {u.staff?.fullName ? u.staff.fullName.charAt(0) : u.username.charAt(0)}
                             </div>
-                            {u.staff ? (
-                              <div className="text-[11px] text-[#64748B]">
-                                {u.staff.fullName} ({u.staff.staffCode || "N/A"})
+                            <div>
+                              <div className="font-semibold text-[#172033] text-xs font-mono">
+                                @{u.username}
                               </div>
-                            ) : (
-                              <div className="text-[10px] text-[#94A3B8] italic">
-                                Chưa liên kết hồ sơ nhân sự
-                              </div>
-                            )}
+                              {u.staff ? (
+                                <div className="text-[11px] text-[#64748B]">
+                                  {u.staff.fullName} ({u.staff.staffCode || "N/A"})
+                                </div>
+                              ) : (
+                                <div className="text-[10px] text-[#94A3B8] italic">
+                                  Chưa liên kết hồ sơ nhân sự
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="py-2.5 px-3">{getRoleBadge(u.role, u.userRoles)}</td>
+                        <td className="py-2.5 px-3">{getRoleBadge(u.role, u.userRoles)}</td>
 
-                      <td className="py-2.5 px-3">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium items-center gap-1.5 ${
-                            u.status === "active"
-                              ? "bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]"
-                              : u.status === "locked"
-                              ? "bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA]"
-                              : "bg-[#F8FAFC] text-[#64748B] border border-[#DDE2E9]"
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              u.status === "active"
-                                ? "bg-[#15803D]"
-                                : u.status === "locked"
-                                ? "bg-[#B91C1C]"
-                                : "bg-slate-400"
-                            }`}
-                          />
-                          {u.status === "active" ? "Hoạt động" : u.status === "locked" ? "Bị khóa" : "Tắt"}
-                        </span>
-                      </td>
+                        <td className="py-2.5 px-3">
+                          {u.status === "locked" ? (
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium items-center gap-1.5 bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C]" />
+                              Bị khóa
+                            </span>
+                          ) : isTemporarilyLocked || isLockedByAttempts ? (
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium items-center gap-1.5 bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#B45309]" />
+                              Khóa tạm ({u.failedAttempts}/5)
+                            </span>
+                          ) : u.status === "active" ? (
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium items-center gap-1.5 bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#15803D]" />
+                              Hoạt động
+                            </span>
+                          ) : (
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium items-center gap-1.5 bg-[#F8FAFC] text-[#64748B] border border-[#DDE2E9]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                              Tắt
+                            </span>
+                          )}
+                        </td>
 
-                      <td className="py-2.5 px-3 font-mono text-[#64748B]">
-                        {u.failedAttempts > 0 ? (
-                          <span className="text-[#B45309] font-semibold">{u.failedAttempts} lần sai</span>
-                        ) : (
-                          <span className="text-[#94A3B8]">0</span>
-                        )}
-                      </td>
+                        <td className="py-2.5 px-3 font-mono text-[#64748B]">
+                          {u.failedAttempts > 0 ? (
+                            <span className="text-[#B45309] font-semibold">{u.failedAttempts} lần sai</span>
+                          ) : (
+                            <span className="text-[#94A3B8]">0</span>
+                          )}
+                          {isTemporarilyLocked && (
+                            <div className="text-[10px] text-rose-600 font-sans font-medium">
+                              Khóa đến: {formatDate(u.lockedUntil)}
+                            </div>
+                          )}
+                          {u.mustChangePassword && (
+                            <div className="text-[10px] text-amber-700 font-sans font-medium">
+                              Yêu cầu đổi pass
+                            </div>
+                          )}
+                        </td>
 
-                      <td className="py-2.5 px-3 text-[#64748B] font-mono text-[11px]">
-                        {u.lastLoginAt ? formatDate(u.lastLoginAt) : "Chưa đăng nhập"}
-                      </td>
+                        <td className="py-2.5 px-3 text-[#64748B] font-mono text-[11px]">
+                          {u.lastLoginAt ? formatDate(u.lastLoginAt) : "Chưa đăng nhập"}
+                        </td>
 
-                      <td className="py-2.5 px-3 text-[#64748B] font-mono text-[11px]">
-                        {formatDate(u.createdAt)}
-                      </td>
+                        <td className="py-2.5 px-3 text-[#64748B] font-mono text-[11px]">
+                          {formatDate(u.createdAt)}
+                        </td>
 
-                      <td className="py-2.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => openResetModal(u)}
-                            className="p-1 rounded hover:bg-[#F8FAFC] text-[#64748B] hover:text-[#B45309] transition-colors"
-                            title="Đặt lại mật khẩu mới"
-                          >
-                            <Key className="w-3.5 h-3.5" />
-                          </button>
+                        <td className="py-2.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {/* Reset mật khẩu mặc định bằng username (SRS mục 1) */}
+                            <button
+                              onClick={() => openResetDefaultModal(u)}
+                              className="p-1 rounded hover:bg-[#FEF3C7] text-[#64748B] hover:text-[#B45309] transition-colors"
+                              title="Reset mật khẩu mặc định (= username)"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
 
-                          <button
-                            onClick={() => handleToggleLock(u)}
-                            className={`p-1 rounded transition-colors ${
-                              u.status === "locked"
-                                ? "text-[#15803D] hover:bg-[#F0FDF4]"
-                                : "text-[#64748B] hover:text-[#B91C1C] hover:bg-[#FEF2F2]"
-                            }`}
-                            title={u.status === "locked" ? "Mở khóa tài khoản" : "Khóa tài khoản"}
-                          >
-                            {u.status === "locked" ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                          </button>
+                            {/* Mở khóa tài khoản hoặc Khóa tài khoản (SRS mục 2, 4) */}
+                            {isLocked ? (
+                              <button
+                                onClick={() => openUnlockModal(u)}
+                                className="p-1 rounded text-[#15803D] hover:bg-[#F0FDF4] hover:text-[#166534] transition-colors"
+                                title="Mở khóa tài khoản bị khóa"
+                              >
+                                <Unlock className="w-3.5 h-3.5" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleLockUser(u)}
+                                className="p-1 rounded text-[#64748B] hover:text-[#B91C1C] hover:bg-[#FEF2F2] transition-colors"
+                                title="Khóa tài khoản"
+                              >
+                                <Lock className="w-3.5 h-3.5" />
+                              </button>
+                            )}
 
-                          <button
-                            onClick={() => {
-                              setEditingUser(u);
-                              setRole(u.role);
-                              setStatus(u.status);
-                              setStaffId(u.staffId || "");
-                              setEditModalOpen(true);
-                            }}
-                            className="p-1 rounded hover:bg-[#F8FAFC] text-[#64748B] hover:text-[#172033] transition-colors"
-                            title="Sửa vai trò & liên kết nhân sự"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
+                            {/* Sửa vai trò & liên kết nhân sự */}
+                            <button
+                              onClick={() => {
+                                setEditingUser(u);
+                                setRole(u.role);
+                                setStatus(u.status);
+                                setStaffId(u.staffId || "");
+                                setEditModalOpen(true);
+                              }}
+                              className="p-1 rounded hover:bg-[#F8FAFC] text-[#64748B] hover:text-[#172033] transition-colors"
+                              title="Sửa vai trò & liên kết nhân sự"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
 
-                          <button
-                            onClick={() => handleDeleteUser(u)}
-                            className="p-1 rounded hover:bg-[#FEF2F2] text-[#64748B] hover:text-[#B91C1C] transition-colors"
-                            title="Xóa tài khoản"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                            {/* Xóa tài khoản */}
+                            <button
+                              onClick={() => handleDeleteUser(u)}
+                              className="p-1 rounded hover:bg-[#FEF2F2] text-[#64748B] hover:text-[#B91C1C] transition-colors"
+                              title="Xóa tài khoản"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -757,70 +831,172 @@ export default function UsersPage() {
         </Modal>
       )}
 
-      {/* Reset Password Modal */}
+      {/* 1. Reset Default Password Modal (SRS mục 1.3) */}
       {resettingUser && (
         <Modal
-          isOpen={resetModalOpen}
-          onClose={() => setResetModalOpen(false)}
-          title={`Đặt lại Mật khẩu: @${resettingUser.username}`}
-          subtitle="Sinh mật khẩu mới ngẫu nhiên và cấp phát lại cho người dùng"
+          isOpen={resetDefaultModalOpen}
+          onClose={() => !saving && setResetDefaultModalOpen(false)}
+          title="Reset mật khẩu"
+          subtitle="Đưa mật khẩu về giá trị mặc định theo username"
           maxWidth="max-w-md"
         >
-          <form onSubmit={handleExecuteReset} className="space-y-4 text-xs">
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-[#172033] uppercase tracking-wider flex items-center justify-between">
-                <span>Mật khẩu mới</span>
-                <button
-                  type="button"
-                  onClick={() => setNewPassword(generateRandomPassword(12))}
-                  className="text-[11px] text-[#2457A7] hover:underline font-semibold flex items-center gap-1"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  Tạo pass khác
-                </button>
-              </label>
-              <input
-                type="text"
-                required
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-md bg-white border border-[#DDE2E9] text-[#172033] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#2457A7]"
-              />
+          <div className="space-y-4 text-xs">
+            {/* Box thông tin tài khoản */}
+            <div className="p-3.5 rounded-lg bg-[#F8FAFC] border border-[#DDE2E9] space-y-3">
+              <div className="flex items-center justify-between pb-2.5 border-b border-[#EDF1F5]">
+                <span className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
+                  Username
+                </span>
+                <span className="font-mono font-bold text-xs text-[#172033] bg-white px-2 py-0.5 rounded border border-[#CBD5E1]">
+                  @{resettingUser.username}
+                </span>
+              </div>
+
+              <div>
+                <div className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider mb-1">
+                  Mật khẩu mặc định sau khi reset
+                </div>
+                <div className="font-medium text-xs text-[#1E429F] bg-[#E5EDFA] px-2.5 py-1.5 rounded-md border border-[#BFDBFE] flex items-center justify-between">
+                  <span>Được thiết lập theo username</span>
+                  <span className="text-[10px] text-[#2457A7] font-semibold">(= {resettingUser.username})</span>
+                </div>
+                <p className="text-[10px] text-[#64748B] mt-1.5 italic">
+                  * Không cần hiển thị mật khẩu hoặc hash mật khẩu trên giao diện quản trị.
+                </p>
+              </div>
             </div>
 
-            {newPassword && (
-              <div className="p-3 rounded-md bg-[#F8FAFC] border border-[#DDE2E9] flex items-center justify-between gap-2">
-                <span className="text-xs text-[#172033] font-mono font-bold">{newPassword}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(newPassword);
-                    setCopied(true);
-                    success("Đã sao chép mật khẩu mới!");
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                  className="px-2.5 py-1 rounded bg-white hover:bg-[#F8FAFC] text-[#172033] border border-[#DDE2E9] text-xs font-medium flex items-center gap-1 transition-colors"
-                >
-                  {copied ? <Check className="w-3 h-3 text-[#15803D]" /> : <Copy className="w-3 h-3" />}
-                  <span>{copied ? "Đã copy" : "Copy"}</span>
-                </button>
+            {/* Box Cảnh báo / Xác nhận thao tác */}
+            <div className="p-3 rounded-lg bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E] space-y-1">
+              <div className="font-semibold text-xs flex items-center gap-1.5 text-[#B45309]">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>Xác nhận thao tác</span>
               </div>
-            )}
+              <p className="text-[11px] leading-relaxed text-[#78350F]">
+                Mật khẩu hiện tại của tài khoản sẽ không còn sử dụng được. Người dùng cần đăng nhập bằng thông tin mặc định và đổi mật khẩu theo chính sách của hệ thống.
+              </p>
+            </div>
 
+            {/* Footer Buttons */}
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EDF1F5]">
               <button
                 type="button"
-                onClick={() => setResetModalOpen(false)}
+                disabled={saving}
+                onClick={() => setResetDefaultModalOpen(false)}
+                className="px-3.5 py-1.5 rounded-md text-xs font-medium text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFC] border border-[#DDE2E9] transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={handleExecuteResetDefault}
+                className="px-4 py-1.5 rounded-md text-xs font-semibold bg-[#B45309] hover:bg-[#92400E] text-white shadow-xs disabled:opacity-50 transition-colors flex items-center gap-1.5"
+              >
+                <Key className="w-3.5 h-3.5" />
+                <span>{saving ? "Đang xử lý..." : "Xác nhận reset"}</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* 2. Unlock User Modal (SRS mục 2.3) */}
+      {unlockingUser && (
+        <Modal
+          isOpen={unlockModalOpen}
+          onClose={() => !saving && setUnlockModalOpen(false)}
+          title="Mở khóa tài khoản"
+          subtitle="Khôi phục khả năng đăng nhập cho người dùng"
+          maxWidth="max-w-md"
+        >
+          <form onSubmit={handleExecuteUnlock} className="space-y-4 text-xs">
+            {/* Header Status Badge */}
+            <div className="flex items-center justify-between pb-1">
+              <span className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider">
+                Trạng thái tài khoản
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FEF2F2] text-[#B91C1C] border border-[#FECACA]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C]" />
+                Đang khóa
+              </span>
+            </div>
+
+            {/* Grid thông tin chi tiết */}
+            <div className="p-3.5 rounded-lg bg-[#F8FAFC] border border-[#DDE2E9] space-y-2 text-xs">
+              <div className="flex justify-between items-center py-1 border-b border-[#EDF1F5]">
+                <span className="text-[#64748B]">Username</span>
+                <span className="font-mono font-bold text-[#172033]">@{unlockingUser.username}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-[#EDF1F5]">
+                <span className="text-[#64748B]">Trạng thái</span>
+                <span className="font-semibold text-rose-700">Bị khóa</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-[#EDF1F5]">
+                <span className="text-[#64748B]">Nguyên nhân</span>
+                <span className="font-medium text-[#172033]">
+                  {unlockingUser.failedAttempts >= 5 ||
+                  (unlockingUser.lockedUntil && new Date(unlockingUser.lockedUntil).getTime() > Date.now())
+                    ? `Đăng nhập sai nhiều lần (${unlockingUser.failedAttempts} lần)`
+                    : "Quản trị viên khóa thủ công"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-[#64748B]">Thời điểm khóa</span>
+                <span className="font-mono text-[#172033] text-[11px]">
+                  {formatDate(unlockingUser.lockedUntil || unlockingUser.updatedAt)}
+                </span>
+              </div>
+            </div>
+
+            {/* Trường nhập Lý do mở khóa (Bắt buộc) */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-[#172033] uppercase tracking-wider flex items-center justify-between">
+                <span>
+                  Lý do mở khóa <span className="text-rose-500">*</span>
+                </span>
+              </label>
+              <textarea
+                required
+                rows={3}
+                value={unlockReason}
+                onChange={(e) => setUnlockReason(e.target.value)}
+                placeholder="Nhập lý do mở khóa tài khoản..."
+                className="w-full px-3 py-2 rounded-md bg-white border border-[#DDE2E9] text-[#172033] placeholder-[#94A3B8] text-xs focus:outline-none focus:ring-1 focus:ring-[#2457A7] resize-none"
+              />
+              <p className="text-[10px] text-[#64748B] italic">
+                Khuyến nghị bắt buộc nhập lý do để phục vụ kiểm tra và truy vết.
+              </p>
+            </div>
+
+            {/* Hộp thông báo Sau khi mở khóa */}
+            <div className="p-3 rounded-lg bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E40AF] space-y-1">
+              <div className="font-semibold text-xs flex items-center gap-1.5 text-[#1D4ED8]">
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                <span>Sau khi mở khóa</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-[#1E3A8A]">
+                Tài khoản được phép thử đăng nhập lại theo chính sách xác thực. Mật khẩu hiện tại không tự thay đổi.
+              </p>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#EDF1F5]">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setUnlockModalOpen(false)}
                 className="px-3.5 py-1.5 rounded-md text-xs font-medium text-[#64748B] hover:text-[#172033] hover:bg-[#F8FAFC] border border-[#DDE2E9] transition-colors"
               >
                 Hủy
               </button>
               <button
                 type="submit"
-                disabled={saving || !newPassword.trim()}
-                className="px-4 py-1.5 rounded-md text-xs font-semibold bg-[#2457A7] hover:bg-[#1C4585] text-white shadow-xs disabled:opacity-50 transition-colors"
+                disabled={saving || !unlockReason.trim()}
+                className="px-4 py-1.5 rounded-md text-xs font-semibold bg-[#15803D] hover:bg-[#166534] text-white shadow-xs disabled:opacity-50 transition-colors flex items-center gap-1.5"
               >
-                {saving ? "Đang cập nhật..." : "Xác nhận Đặt lại"}
+                <Unlock className="w-3.5 h-3.5" />
+                <span>{saving ? "Đang xử lý..." : "Xác nhận mở khóa"}</span>
               </button>
             </div>
           </form>
