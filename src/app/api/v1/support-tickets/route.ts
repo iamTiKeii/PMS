@@ -338,7 +338,7 @@ export async function POST(request: NextRequest) {
     // Tính thời lượng
     const durations = await calculateTicketDurations(sentDate, receivedDate, resolvedDate);
     const status = resolvedDate ? "COMPLETED" : "IN_PROGRESS";
-    const ticketCode = await generateNextTicketCode();
+    const ticketCode = await generateNextTicketCode(sentDate);
 
     // Lưu vào database với transaction
     const newTicket = await prisma.$transaction(async (tx) => {

@@ -24,8 +24,10 @@ import {
   Building,
   Sparkles,
   ExternalLink,
+  Upload,
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import { ImportTicketsModal } from "@/components/support-tickets/ImportTicketsModal";
 
 interface MasterData {
   businesses: { id: string; code: string; name: string }[];
@@ -99,6 +101,9 @@ export default function SupportTicketsPage() {
     assignedUserId: "",
     q: "",
   });
+
+  // Modal Import Excel
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Modal tạo ca mới
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -362,6 +367,14 @@ export default function SupportTicketsPage() {
         subtitle="Quản lý đồng bộ ca hỗ trợ từ Browser Extension và Hub, theo dõi tiến độ và thời gian xử lý"
         actionButton={
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="px-3 py-1.5 rounded-md bg-white hover:bg-[#F8FAFC] text-[#172033] font-medium text-xs flex items-center gap-1.5 transition-colors border border-[#DDE2E9] shadow-xs cursor-pointer"
+              title="Nhập hàng loạt ca hỗ trợ từ file Excel (.xlsx)"
+            >
+              <Upload className="w-3.5 h-3.5 text-[#2457A7]" />
+              <span>Nhập Excel</span>
+            </button>
             <a
               href={getExportUrl()}
               target="_blank"
@@ -429,7 +442,7 @@ export default function SupportTicketsPage() {
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
               <input
                 type="text"
-                placeholder="Tìm theo mã ca (HT-00021), tên người yêu cầu, nội dung hoặc cách xử lý..."
+                placeholder="Tìm theo mã ca (HT2610150001), tên người yêu cầu, nội dung hoặc cách xử lý..."
                 value={filters.q}
                 onChange={(e) => setFilters({ ...filters, q: e.target.value })}
                 className="w-full pl-9 pr-3 py-1.5 rounded-md border border-[#DDE2E9] bg-white text-xs text-[#172033] placeholder-[#94A3B8] focus:outline-none focus:border-[#2457A7] focus:ring-1 focus:ring-[#2457A7]"
@@ -1158,6 +1171,15 @@ export default function SupportTicketsPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Import ca hỗ trợ từ file Excel */}
+      <ImportTicketsModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={() => {
+          loadTickets();
+        }}
+      />
     </div>
   );
 }

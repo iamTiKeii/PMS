@@ -9,27 +9,58 @@ export interface DurationCalculation {
 }
 
 /**
- * Tự động tạo mã ca tiếp theo: HT-00001, HT-00002...
+ * Lấy tiền tố mã ca theo ngày định dạng HTyymmdd (múi giờ Asia/Ho_Chi_Minh)
+ * Ví dụ ngày 15/10/2026 -> HT261015
  */
-export async function generateNextTicketCode(): Promise<string> {
+export function getTicketDatePrefix(date: Date = new Date()): string {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = formatter.formatToParts(date);
+  const yy = parts.find((p) => p.type === "year")?.value || "";
+  const mm = parts.find((p) => p.type === "month")?.value || "";
+  const dd = parts.find((p) => p.type === "day")?.value || "";
+  return `HT${yy}${mm}${dd}`;
+}
+
+/**
+ * Tự động tạo mã ca tiếp theo: HTyymmddxxxx
+ * Trong đó:
+ * - Prefix: HT
+ * - yy: 2 số cuối năm
+ * - mm: 2 số tháng
+ * - dd: 2 số ngày
+ * - xxxx: 4 số tự nhiên tăng dần (0001, 0002...)
+ */
+export async function generateNextTicketCode(date: Date = new Date()): Promise<string> {
+  const prefix = getTicketDatePrefix(date);
+
   const latestTicket = await prisma.supportTicket.findFirst({
-    orderBy: { createdAt: "desc" },
+    where: {
+      ticketCode: {
+        startsWith: prefix,
+      },
+    },
+    orderBy: { ticketCode: "desc" },
     select: { ticketCode: true },
   });
 
   if (!latestTicket || !latestTicket.ticketCode) {
-    return "HT-00001";
+    return `${prefix}0001`;
   }
 
-  // Tách số từ HT-XXXXX
-  const match = latestTicket.ticketCode.match(/^HT-(\d+)$/);
-  if (!match) {
-    const count = await prisma.supportTicket.count();
-    return `HT-${String(count + 1).padStart(5, "0")}`;
+  // Tách 4 số đuôi từ mã ca HTyymmddxxxx
+  const suffix = latestTicket.ticketCode.slice(prefix.length);
+  const currentNum = parseInt(suffix, 10);
+  if (isNaN(currentNum)) {
+    return `${prefix}0001`;
   }
 
-  const nextNum = parseInt(match[1], 10) + 1;
-  return `HT-${String(nextNum).padStart(5, "0")}`;
+  const nextNum = currentNum + 1;
+  return `${prefix}${String(nextNum).padStart(4, "0")}`;
 }
 
 /**
